@@ -1,3 +1,5 @@
+""" Dummy Charging Station Management System (CSMS) implementation - Partial functionality """
+
 import asyncio
 import logging
 import websockets
@@ -20,7 +22,7 @@ class ChargePointHandler(ChargePoint):
 
     @on(Action.boot_notification)
     async def on_boot_notification(self, charging_station, reason, **kwargs):
-        return call_result.BootNotificationPayload(
+        return call_result.BootNotification(
             current_time=datetime.now().isoformat(),
             interval=10,
             status=RegistrationStatusType.accepted
@@ -30,7 +32,7 @@ class ChargePointHandler(ChargePoint):
     async def on_status_notification(self, connector_id, connector_status, **kwargs):
         logging.info(
             f"Received StatusNotification from {self.id} for connector {connector_id} with status {connector_status}.")
-        return call_result.StatusNotificationPayload()
+        return call_result.StatusNotification()
 
 
 async def consume_message_and_echo(websocket):

@@ -1,5 +1,4 @@
 import os
-
 import pytest_asyncio
 import websockets
 from websockets import InvalidStatusCode

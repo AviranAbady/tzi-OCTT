@@ -30,7 +30,7 @@ class MockChargePoint(ChargePoint):
         logging.info(f"Sending StatusNotification for connector {connector_id} with status {status}...")
 
         request = call.StatusNotification(
-            timestamp=datetime.now().isoformat(),
+            timestamp=datetime.now().isoformat() + "Z",
             connector_id=connector_id,
             evse_id=1,
             connector_status=status
@@ -44,10 +44,10 @@ class MockChargePoint(ChargePoint):
             2: ConnectorStatusType.occupied
         }
 
-        response = []
+        response_count = 0
         for connector_id, status in connectors_status.items():
-            r = await self._send_connector_status(connector_id, status)
-            response.append(r)
+            await self._send_connector_status(connector_id, status)
+            response_count += 1
 
         logging.info("Connected to central system.")
-        return response
+        return len(connectors_status) == response_count

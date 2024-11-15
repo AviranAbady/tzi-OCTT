@@ -52,13 +52,13 @@ async def test_tc_a_01(connection):
     cp = MockChargePoint('CP_1', connection)
 
     start_task = asyncio.create_task(cp.start())
-    response = await cp.send_boot_notification()
+    boot_response = await cp.send_boot_notification()
 
-    assert response is not None
-    assert response.status == RegistrationStatusType.accepted
+    assert boot_response is not None
+    assert boot_response.status == RegistrationStatusType.accepted
 
-    response = await cp.send_status_notification()
-
+    status_response = await cp.send_status_notification()
+    assert status_response == True
 
     start_task.cancel()
 
@@ -85,7 +85,7 @@ Test Scenario
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("connection", [("CP_2", get_basic_auth_headers("wrong  ", TEST_USER_PASSWORD))], indirect=True)
+@pytest.mark.parametrize("connection", [("CP_1", get_basic_auth_headers("wrong", TEST_USER_PASSWORD))], indirect=True)
 async def test_tc_a_02(connection):
     assert connection.open == False
     assert connection.status_code == 401
@@ -112,7 +112,7 @@ Test Scenario
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("connection", [("CP_3", get_basic_auth_headers(TEST_USER_NAME, "wrong"))], indirect=True)
+@pytest.mark.parametrize("connection", [("CP_1", get_basic_auth_headers(TEST_USER_NAME, "wrong"))], indirect=True)
 async def test_tc_a_03(connection):
     assert connection.open == False
     assert connection.status_code == 401
