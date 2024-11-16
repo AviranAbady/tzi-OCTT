@@ -44,8 +44,6 @@ async def test_tc_c_02(connection):
 
     start_task = asyncio.create_task(cp.start())
 
-    # TODO: Will fail on client side due to incorrect token_type CASH
-    #  figure out how to bypass client side validation
     authorization_response = await cp.send_authorization_request(id_token=token_id, token_type=token_type)
 
     assert authorization_response is not None

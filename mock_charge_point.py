@@ -55,6 +55,6 @@ class MockChargePoint(ChargePoint):
 
     async def send_authorization_request(self, id_token, token_type):
         request = call.AuthorizePayload(id_token=dict(id_token=id_token, type=token_type))
-        response = await self.call(request)
+        response = await self.call(request, skip_schema_validation=True)
         return response
 
