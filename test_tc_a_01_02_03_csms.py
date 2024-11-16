@@ -1,4 +1,3 @@
-import base64
 import asyncio
 import pytest
 import os
@@ -6,19 +5,10 @@ import os
 from ocpp.v201.enums import RegistrationStatusType
 
 from mock_charge_point import MockChargePoint
+from utils import get_basic_auth_headers, validate_schema
 
 TEST_USER_NAME = os.environ['TEST_USER_NAME']
 TEST_USER_PASSWORD = os.environ['TEST_USER_PASSWORD']
-
-
-def get_basic_auth_headers(username, password):
-    auth_string = base64.b64encode(f"{username}:{password}".encode()).decode()
-    headers = {
-        "Authorization": f"Basic {auth_string}"
-    }
-
-    return headers
-
 
 """
 Test case name      Basic Authentication - Valid username/password combination
@@ -55,10 +45,11 @@ async def test_tc_a_01(connection):
     boot_response = await cp.send_boot_notification()
 
     assert boot_response is not None
+    assert validate_schema(data=boot_response, schema_file_path='./schema/BootNotificationResponse.json')
     assert boot_response.status == RegistrationStatusType.accepted
 
     status_response = await cp.send_status_notification()
-    assert status_response == True
+    assert status_response
 
     start_task.cancel()
 

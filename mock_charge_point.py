@@ -1,8 +1,9 @@
 import asyncio
 from datetime import datetime
 
-from ocpp.v201 import call
+from ocpp.v201 import call, enums
 from ocpp.v201 import ChargePoint
+from ocpp.v201.datatypes import IdTokenType
 from ocpp.v201.enums import ConnectorStatusType
 import logging
 
@@ -51,3 +52,9 @@ class MockChargePoint(ChargePoint):
 
         logging.info("Connected to central system.")
         return len(connectors_status) == response_count
+
+    async def send_authorization_request(self, id_token, token_type):
+        request = call.AuthorizePayload(id_token=dict(id_token=id_token, type=token_type))
+        response = await self.call(request)
+        return response
+
