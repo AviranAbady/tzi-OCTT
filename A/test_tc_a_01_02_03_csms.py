@@ -45,7 +45,7 @@ async def test_tc_a_01(connection):
     boot_response = await cp.send_boot_notification()
 
     assert boot_response is not None
-    assert validate_schema(data=boot_response, schema_file_path='./schema/BootNotificationResponse.json')
+    assert validate_schema(data=boot_response, schema_file_path='../schema/BootNotificationResponse.json')
     assert boot_response.status == RegistrationStatusType.accepted
 
     status_response = await cp.send_status_notification()

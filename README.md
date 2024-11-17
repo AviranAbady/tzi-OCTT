@@ -10,18 +10,20 @@ Implemented tests
 * TC_A_01_CSMS
 * TC_A_02_CSMS
 * TC_A_03_CSMS
+* TC_C_02_CSMS
+* TC_C_06_CSMS
 
 [csms.py](/csms.py) - Mock in memory CSMS which you can test against - Can be used to checkout the tests, definitely not a complete implementation of a CSMS.
 
 
-### Install depenandices
+### Install dependencies
 ```
 pip install -r requirements.txt
 ```
 
 ### Run tests
 ```
-pytest -v -p no:warnings test_tc_a_01_02_03_csms.py
+pytest -v -p no:warnings A/test_tc_a_01_02_03_csms.py
 ```
 
 ## Configuration / Environment Variables
