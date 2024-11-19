@@ -1,3 +1,14 @@
+import asyncio
+import pytest
+import os
+
+from mock_charge_point import MockChargePoint
+from reusable_states import ev_connected_pre_session
+from utils import get_basic_auth_headers, validate_schema
+
+TEST_USER_NAME = os.environ['TEST_USER_NAME']
+TEST_USER_PASSWORD = os.environ['TEST_USER_PASSWORD']
+
 """
 Test case name      Authorization through authorization cache - Accepted
 Test case Id        TC_C_08_CSMS
@@ -30,3 +41,19 @@ Charging Station CSMS
 2. The CSMS responds with a TransactionEventResponse
     - idTokenInfo.status Accepted
 """
+
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("connection", [("CP_1", get_basic_auth_headers(TEST_USER_NAME, TEST_USER_PASSWORD))],
+                         indirect=True)
+async def test_tc_c_08(connection):
+    token_id = os.environ['EXPIRED_ID_TOKEN']
+    token_type = os.environ['EXPIRED_ID_TOKEN_TYPE']
+
+    assert connection.open
+    cp = MockChargePoint('CP_1', connection)
+
+    start_task = asyncio.create_task(cp.start())
+
+    ev_connected_pre_session(cp)

@@ -2,7 +2,7 @@ import asyncio
 import pytest
 import os
 
-from ocpp.v201.enums import RegistrationStatusType
+from ocpp.v201.enums import RegistrationStatusType, ConnectorStatusType
 
 from mock_charge_point import MockChargePoint
 from utils import get_basic_auth_headers, validate_schema
@@ -48,8 +48,14 @@ async def test_tc_a_01(connection):
     assert validate_schema(data=boot_response, schema_file_path='../schema/BootNotificationResponse.json')
     assert boot_response.status == RegistrationStatusType.accepted
 
-    status_response = await cp.send_status_notification()
-    assert status_response
+    connectors_status = {
+        0: ConnectorStatusType.available,
+        1: ConnectorStatusType.occupied,
+    }
+
+    for connector_id, status in connectors_status.items():
+        status_response = await cp.send_status_notification(connector_id, status)
+        assert status_response
 
     start_task.cancel()
 

@@ -42,7 +42,7 @@ async def test_tc_c_02(connection):
 
     start_task = asyncio.create_task(cp.start())
 
-    authorization_response = await cp.send_authorization_request(id_token=token_id, token_type=token_type)
+    authorization_response = await cp.send_authorization_request(id_token=token_id, token_type=token_type, skip_schema_validation=True)
 
     assert authorization_response is not None
     assert validate_schema(data=authorization_response, schema_file_path='../schema/AuthorizeResponse.json')
