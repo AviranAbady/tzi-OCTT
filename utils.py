@@ -1,5 +1,5 @@
 import json
-
+import os
 import jsonschema
 import base64
 from dataclasses import asdict
@@ -17,8 +17,10 @@ def get_basic_auth_headers(username, password):
     return headers
 
 
-def validate_schema(data, schema_file_path):
-    with open(schema_file_path) as schema_file:
+def validate_schema(data, schema_file_name):
+    current_directory = os.getcwd()
+    schema_file_name = os.path.join('schema', schema_file_name)
+    with open(schema_file_name) as schema_file:
         schema = json.load(schema_file)
         data = humps.camelize(asdict(data))
         data = _remove_nones(data)

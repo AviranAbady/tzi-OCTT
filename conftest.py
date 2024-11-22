@@ -17,13 +17,13 @@ async def connection(request):
         raise Exception("CSMS_ADDRESS NOT SET - check pytest.ini")
     cp_name, headers = request.param
     try:
-        ws = await websockets.connect(uri=f'{CSMS_ADDRESS}/{cp_name}',
+        uri = f'{CSMS_ADDRESS}/{cp_name}'
+        ws = await websockets.connect(uri=uri,
                                       subprotocols=['ocpp2.0.1'],
                                       extra_headers=headers)
     except InvalidStatusCode as e:
         yield MockConnection(open=False, status_code=e.status_code)
         return
-
 
     yield ws
 

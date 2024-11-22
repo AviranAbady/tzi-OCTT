@@ -7,8 +7,8 @@ from ocpp.v201.enums import RegistrationStatusType, ConnectorStatusType
 from mock_charge_point import MockChargePoint
 from utils import get_basic_auth_headers, validate_schema
 
-TEST_USER_NAME = os.environ['TEST_USER_NAME']
-TEST_USER_PASSWORD = os.environ['TEST_USER_PASSWORD']
+BASIC_AUTH_CP = os.environ['BASIC_AUTH_CP']
+TEST_USER_PASSWORD = os.environ['BASIC_AUTH_CP_PASSWORD']
 
 """
 Test case name      Basic Authentication - Valid username/password combination
@@ -35,17 +35,17 @@ Test Scenario
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("connection", [("CP_1", get_basic_auth_headers(TEST_USER_NAME, TEST_USER_PASSWORD))],
+@pytest.mark.parametrize("connection", [(BASIC_AUTH_CP, get_basic_auth_headers(BASIC_AUTH_CP, TEST_USER_PASSWORD))],
                          indirect=True)
 async def test_tc_a_01(connection):
     assert connection.open
-    cp = MockChargePoint('CP_1', connection)
+    cp = MockChargePoint(BASIC_AUTH_CP, connection)
 
     start_task = asyncio.create_task(cp.start())
     boot_response = await cp.send_boot_notification()
 
     assert boot_response is not None
-    assert validate_schema(data=boot_response, schema_file_path='../schema/BootNotificationResponse.json')
+    assert validate_schema(data=boot_response, schema_file_name='BootNotificationResponse.json')
     assert boot_response.status == RegistrationStatusType.accepted
 
     connectors_status = {
@@ -82,7 +82,7 @@ Test Scenario
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("connection", [("CP_1", get_basic_auth_headers("wrong", TEST_USER_PASSWORD))], indirect=True)
+@pytest.mark.parametrize("connection", [(BASIC_AUTH_CP, get_basic_auth_headers("wrong", TEST_USER_PASSWORD))], indirect=True)
 async def test_tc_a_02(connection):
     assert connection.open == False
     assert connection.status_code == 401
@@ -109,7 +109,7 @@ Test Scenario
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("connection", [("CP_1", get_basic_auth_headers(TEST_USER_NAME, "wrong"))], indirect=True)
+@pytest.mark.parametrize("connection", [(BASIC_AUTH_CP, get_basic_auth_headers(BASIC_AUTH_CP, "wrong"))], indirect=True)
 async def test_tc_a_03(connection):
     assert connection.open == False
     assert connection.status_code == 401
