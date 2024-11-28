@@ -3,8 +3,8 @@ import pytest
 import os
 
 from mock_charge_point import MockChargePoint
-from reusable_states import ev_connected_pre_session
-from utils import get_basic_auth_headers, validate_schema
+from reusable_states.ev_connected_pre_session import ev_connected_pre_session
+from utils import get_basic_auth_headers
 
 BASIC_AUTH_CP = os.environ['BASIC_AUTH_CP']
 BASIC_AUTH_CP_PASSWORD = os.environ['BASIC_AUTH_CP_PASSWORD']

@@ -82,7 +82,7 @@ Test Scenario
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("connection", [(BASIC_AUTH_CP, get_basic_auth_headers("wrong", TEST_USER_PASSWORD))], indirect=True)
+@pytest.mark.parametrize("connection", [(BASIC_AUTH_CP, get_basic_auth_headers(BASIC_AUTH_CP + "wrong", TEST_USER_PASSWORD))], indirect=True)
 async def test_tc_a_02(connection):
     assert connection.open == False
     assert connection.status_code == 401
@@ -109,7 +109,7 @@ Test Scenario
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("connection", [(BASIC_AUTH_CP, get_basic_auth_headers(BASIC_AUTH_CP, "wrong"))], indirect=True)
+@pytest.mark.parametrize("connection", [(BASIC_AUTH_CP, get_basic_auth_headers(BASIC_AUTH_CP, TEST_USER_PASSWORD + "wrong"))], indirect=True)
 async def test_tc_a_03(connection):
     assert connection.open == False
     assert connection.status_code == 401
