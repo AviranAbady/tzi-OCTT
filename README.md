@@ -23,7 +23,8 @@ pip install -r requirements.txt
 
 ### Run tests
 ```
-pytest -v -p no:warnings A/test_tc_a_01_02_03_csms.py
+pytest -v -p no:warnings ./A
+pytest -v -p no:warnings ./C::test_tc_c_02_csms.py
 ```
 
 ## Configuration / Environment Variables

@@ -3,6 +3,7 @@ import pytest_asyncio
 import websockets
 from websockets import InvalidStatusCode
 from dataclasses import dataclass
+import time
 
 CSMS_ADDRESS = os.environ.get('CSMS_ADDRESS', None)
 
@@ -25,6 +26,8 @@ async def connection(request):
         yield MockConnection(open=False, status_code=e.status_code)
         return
 
+    # Some delay is required by some CSMS prior to being able to handle data sent
+    time.sleep(0.5)
     yield ws
 
     await ws.close()

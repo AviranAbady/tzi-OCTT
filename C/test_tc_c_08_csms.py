@@ -1,14 +1,3 @@
-import asyncio
-import pytest
-import os
-
-from mock_charge_point import MockChargePoint
-from reusable_states.ev_connected_pre_session import ev_connected_pre_session
-from utils import get_basic_auth_headers
-
-BASIC_AUTH_CP = os.environ['BASIC_AUTH_CP']
-BASIC_AUTH_CP_PASSWORD = os.environ['BASIC_AUTH_CP_PASSWORD']
-
 """
 Test case name      Authorization through authorization cache - Accepted
 Test case Id        TC_C_08_CSMS
@@ -42,7 +31,16 @@ Charging Station CSMS
     - idTokenInfo.status Accepted
 """
 
+import asyncio
+import pytest
+import os
 
+from mock_charge_point import MockChargePoint
+from reusable_states.ev_connected_pre_session import ev_connected_pre_session
+from utils import get_basic_auth_headers
+
+BASIC_AUTH_CP = os.environ['BASIC_AUTH_CP']
+BASIC_AUTH_CP_PASSWORD = os.environ['BASIC_AUTH_CP_PASSWORD']
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("connection", [(BASIC_AUTH_CP, get_basic_auth_headers(BASIC_AUTH_CP, BASIC_AUTH_CP_PASSWORD))],

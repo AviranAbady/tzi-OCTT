@@ -19,7 +19,7 @@ def get_basic_auth_headers(username, password):
 
 def validate_schema(data, schema_file_name):
     current_directory = os.getcwd()
-    schema_file_name = os.path.join('schema', schema_file_name)
+    schema_file_name = os.path.join(current_directory, 'schema', schema_file_name)
     with open(schema_file_name) as schema_file:
         schema = json.load(schema_file)
         data = humps.camelize(asdict(data))
