@@ -59,5 +59,5 @@ Test Scenario
 10. The CSMS responds according
 """
 
-async def test_tc_a_04():
-    pass
+# async def test_tc_a_04():
+#     pass

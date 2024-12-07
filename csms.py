@@ -12,6 +12,8 @@ from ocpp.v201 import call_result
 from ocpp.v201.enums import RegistrationStatusType, Action
 from websockets import ConnectionClosedOK
 
+from utils import now_iso
+
 logging.basicConfig(level=logging.INFO)
 
 VALID_USERNAME = "username"
@@ -23,7 +25,7 @@ class ChargePointHandler(ChargePoint):
     @on(Action.boot_notification)
     async def on_boot_notification(self, charging_station, reason, **kwargs):
         return call_result.BootNotification(
-            current_time=datetime.now().isoformat(),
+            current_time=now_iso(),
             interval=10,
             status=RegistrationStatusType.accepted
         )

@@ -37,10 +37,12 @@ import os
 
 from mock_charge_point import MockChargePoint
 from reusable_states.ev_connected_pre_session import ev_connected_pre_session
+from reusable_states.parking_bay_occupied import parking_bay_occupied
 from utils import get_basic_auth_headers
 
 BASIC_AUTH_CP = os.environ['BASIC_AUTH_CP']
 BASIC_AUTH_CP_PASSWORD = os.environ['BASIC_AUTH_CP_PASSWORD']
+
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("connection", [(BASIC_AUTH_CP, get_basic_auth_headers(BASIC_AUTH_CP, BASIC_AUTH_CP_PASSWORD))],
@@ -54,4 +56,7 @@ async def test_tc_c_08(connection):
 
     start_task = asyncio.create_task(cp.start())
 
-    ev_connected_pre_session(cp)
+    await parking_bay_occupied(cp)
+    await ev_connected_pre_session(cp)
+
+    start_task.cancel()

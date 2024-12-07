@@ -5,7 +5,8 @@ import base64
 from dataclasses import asdict
 import humps
 import logging
-
+from datetime import datetime
+import uuid
 logging.basicConfig(level=logging.INFO)
 
 def get_basic_auth_headers(username, password):
@@ -63,3 +64,8 @@ def _remove_nones(data, depth=0):
 
     return data
 
+def now_iso():
+    return datetime.now().isoformat() + "Z"
+
+def generate_transaction_id():
+    return str(uuid.uuid4())
