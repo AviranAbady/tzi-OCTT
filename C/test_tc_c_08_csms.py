@@ -13,9 +13,9 @@ Description         This test case describes how the EV Driver is authorized to 
 
 Prerequisite(s) N/a
 Before (Preparations)
-Configuration State: N/a
-Memory State: N/a
-Charging State: State is EVConnectedPreSession
+    Configuration State: N/a
+    Memory State: N/a
+    Charging State: State is EVConnectedPreSession
 
 Test scenario
 Charging Station CSMS
@@ -37,10 +37,12 @@ import os
 
 from mock_charge_point import MockChargePoint
 from reusable_states.ev_connected_pre_session import ev_connected_pre_session
+from reusable_states.parking_bay_occupied import parking_bay_occupied
 from utils import get_basic_auth_headers
 
 BASIC_AUTH_CP = os.environ['BASIC_AUTH_CP']
 BASIC_AUTH_CP_PASSWORD = os.environ['BASIC_AUTH_CP_PASSWORD']
+
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("connection", [(BASIC_AUTH_CP, get_basic_auth_headers(BASIC_AUTH_CP, BASIC_AUTH_CP_PASSWORD))],
@@ -53,5 +55,6 @@ async def test_tc_c_08(connection):
     cp = MockChargePoint(BASIC_AUTH_CP, connection)
 
     start_task = asyncio.create_task(cp.start())
+    await ev_connected_pre_session(cp)
 
-    ev_connected_pre_session(cp)
+    start_task.cancel()

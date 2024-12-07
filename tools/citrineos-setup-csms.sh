@@ -12,3 +12,5 @@ curl --location --request POST 'localhost:8080/data/configuration/password?callb
   "password": "0123456789123456",
   "setOnCharger": true
 }'
+
+
