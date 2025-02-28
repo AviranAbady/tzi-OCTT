@@ -1,20 +1,16 @@
 import asyncio
-from datetime import datetime
-from typing import List, Dict, Optional, Any
-
-from ocpp.v201 import call, enums
-from ocpp.v201 import ChargePoint
-from ocpp.v201.call import TransactionEvent
-from ocpp.v201.datatypes import IdTokenType, EventDataType, ComponentType, VariableAttributeType, VariableType
-from ocpp.v201.enums import ConnectorStatusType, EventTriggerType
+from typing import List
 import logging
-from urllib3 import request
+
+from ocpp.v201 import call
+from ocpp.v201 import ChargePoint
+from ocpp.v201.datatypes import EventDataType, StatusInfoType
+from ocpp.v201.call import TransactionEvent, ClearCache
 
 from utils import now_iso
 
 
 class MockChargePoint(ChargePoint):
-
     seq_no = 0
     notify_event_sent = False
 
@@ -70,4 +66,8 @@ class MockChargePoint(ChargePoint):
 
     async def send_transaction_event_request(self, event: TransactionEvent):
         response = await self.call(event)
+        return response
+
+    async def send_clear_cache_request(self, req: ClearCache) -> StatusInfoType:
+        response = await self.call(req)
         return response

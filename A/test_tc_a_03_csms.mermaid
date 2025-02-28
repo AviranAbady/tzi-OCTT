@@ -1,0 +1,15 @@
+sequenceDiagram
+    participant CS as Charging Station (OCTT)
+    participant CSMS as CSMS (System Under Test)
+    
+    Note over CS, CSMS: Test Case: TC_A_03_CSMS
+    Note over CS, CSMS: Purpose: Verify CSMS validates and rejects invalid Basic auth credentials
+    
+    CS->>CSMS: HTTP Upgrade Request
+    Note right of CS: Authorization: Basic [Base64(ChargingStationId:InvalidPassword)]
+    Note right of CS: Invalid password: Random string with high entropy (16-40 chars)
+    
+    CSMS-->>CS: Connection Upgrade Request Rejected
+    Note over CS, CSMS: Authentication Failed - Invalid Password
+    
+    Note over CSMS: Validation: CSMS correctly rejects connection with invalid credentials

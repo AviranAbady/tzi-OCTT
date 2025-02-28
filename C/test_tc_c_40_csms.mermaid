@@ -1,0 +1,17 @@
+sequenceDiagram
+    participant CS as Charging Station
+    participant CSMS as Charging Station Management System
+    
+    Note over CS,CSMS: Prerequisites: Two valid idTokens with same GroupId configured in Local Authorization List
+    Note over CS: Initial State: EVConnectedPreSession
+    
+    CS->>CSMS: TransactionEventRequest<br>triggerReason: Authorized<br>idToken.idToken: valid_idtoken_idtoken<br>idToken.type: valid_idtoken_type<br>eventType: Started/Updated
+    CSMS-->>CS: TransactionEventResponse<br>idTokenInfo.status: Accepted<br>idTokenInfo.groupIdToken.idToken: configured_groupIdToken
+    
+    Note over CS: Execute Reusable State: EnergyTransferStarted
+    
+    CS->>CSMS: TransactionEventRequest<br>triggerReason: StopAuthorized<br>idToken.idToken: valid_idtoken2_idtoken<br>idToken.type: valid_idtoken2_type<br>eventType: Updated
+    CSMS-->>CS: TransactionEventResponse<br>idTokenInfo.status: Accepted<br>idTokenInfo.groupIdToken.idToken: configured_groupIdToken
+    
+    Note over CS: Execute Reusable State: EVConnectedPostSession
+    Note over CS: Execute Reusable State: EVDisconnected

@@ -1,0 +1,20 @@
+sequenceDiagram
+    participant CS as Charging Station (OCTT)
+    participant CSMS as CSMS (System Under Test)
+    
+    Note over CS, CSMS: Prerequisites: Two active transactions on EVSE 1 and EVSE 2
+    Note over CS, CSMS: State is EnergyTransferStarted for EVSE 1 with valid idToken
+    Note over CS, CSMS: State is EnergyTransferStarted for EVSE 2 with valid idToken2
+    
+    CS->>CSMS: AuthorizeRequest<br/>idToken.idToken: [Configured masterpass_idtoken_idtoken]<br/>idToken.type: [Configured masterpass_idtoken_type]
+    CSMS-->>CS: AuthorizeResponse
+    
+    Note over CS, CSMS: For EVSE 1
+    CS->>CSMS: TransactionEventRequest<br/>transactionInfo.stoppedReason: MasterPass<br/>idToken.idToken: [Configured valid_idtoken_idtoken]<br/>idToken.type: [Configured valid_idtoken_type]<br/>eventType: Ended
+    CSMS-->>CS: TransactionEventResponse
+    
+    Note over CS, CSMS: For EVSE 2
+    CS->>CSMS: TransactionEventRequest<br/>transactionInfo.stoppedReason: MasterPass<br/>idToken.idToken: [Configured valid_idtoken_idtoken]<br/>idToken.type: [Configured valid_idtoken_type]<br/>eventType: Ended
+    CSMS-->>CS: TransactionEventResponse
+    
+    Note over CS, CSMS: Test Purpose: Verify CSMS can correctly respond to a request to stop<br/>all transactions when an idToken with MasterPass as GroupId is used<br/>and the Charging Station has no User Interface

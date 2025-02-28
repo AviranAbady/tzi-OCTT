@@ -1,0 +1,14 @@
+sequenceDiagram
+    participant CS as Charging Station
+    participant CSMS as Charging Station Management System
+    
+    Note over CS,CSMS: Test Case: TC_C_37_CSMS
+    Note over CS,CSMS: Clear Authorization Data in Authorization Cache - Accepted
+    
+    CSMS->>CS: ClearCacheRequest
+    Note right of CSMS: CSMS requests Charging Station to clear Authorization Cache
+    
+    CS->>CSMS: ClearCacheResponse(status: Accepted)
+    Note left of CS: Charging Station accepts the request and clears the cache
+
+    Note over CS,CSMS: Purpose: Verify if CSMS can request clearing of all identifiers from Authorization Cache

@@ -1,0 +1,24 @@
+sequenceDiagram
+    participant CS as Charging Station
+    participant CSMS as Charging Station Management System
+    
+    Note over CS,CSMS: Test Case: TC_A_04_CSMS
+    Note over CS,CSMS: Purpose: Verify CSMS can provide valid server certificate and establish secure WebSocket connection
+    
+    CS->>CSMS: Initiate WebSocket Connection
+    Note right of CS: Security Profile 2 or 3
+    
+    CSMS-->>CS: Present Server-Side Certificate
+    Note over CSMS: Certificate must be valid and comply with:<br/>A00.FR.306, A00.FR.307, A00.FR.312,<br/>A00.FR.318, A00.FR.321, A00.FR.502,<br/>A00.FR.503, A00.FR.507, A00.FR.508, A00.FR.510
+    
+    CS->>CS: Validate CSMS Certificate
+    
+    alt Certificate Valid
+        CS->>CSMS: Complete TLS Handshake
+        CSMS-->>CS: Handshake Response
+        Note over CS,CSMS: Secure WebSocket Connection Established
+        CS->>CSMS: Normal OCPP Operations Continue
+    else Certificate Invalid
+        CS->>CSMS: Abort Connection
+        Note over CS,CSMS: Test Case Fails
+    end

@@ -1,0 +1,31 @@
+sequenceDiagram
+    participant CS as Charging Station (OCTT)
+    participant CSMS as Charging Station Management System
+    participant OCSP as OCTT OCSP Service
+    
+    Note over CS, CSMS: Prerequisites: Valid eMAID, Contract certificate signed by V2GRoot/MORoot
+    Note over CS: Initial State: EVConnectedPreSession
+    
+    CS->>+CSMS: AuthorizeRequest
+    Note right of CS: idToken.idToken: <valid_idtoken_idtoken><br>idToken.type: <valid_idtoken_type><br>certificate: <contract_certificate><br>iso15118CertificateHashData: absent
+    
+    CSMS->>+OCSP: OCSP Request
+    Note right of CSMS: Request certificate validity check
+    
+    OCSP-->>-CSMS: OCSP Response (Certificate Valid)
+    
+    CSMS-->>-CS: AuthorizeResponse
+    Note left of CSMS: idTokenInfo.status: Accepted<br>certificateStatus: Accepted
+    
+    CS->>+CSMS: TransactionEventRequest
+    Note right of CS: triggerReason: Authorized
+    
+    CSMS-->>-CS: TransactionEventResponse
+    Note left of CSMS: idTokenInfo.status: Accepted
+    
+    Note over CS, CSMS: Execute Reusable State: EnergyTransferStarted
+    
+    Note over CS, CSMS: Tool Validations
+    Note over CSMS: 1. CSMS sends OCSP request for certificate
+    Note over CS, OCSP: 2. OCTT checks received OCSP request is valid
+    Note over CS, CSMS: 3. Verify AuthorizeResponse and TransactionEventResponse status values

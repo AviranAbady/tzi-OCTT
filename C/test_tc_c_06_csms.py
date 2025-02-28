@@ -1,15 +1,3 @@
-import asyncio
-import pytest
-import os
-
-from ocpp.v201.enums import AuthorizationStatusType
-
-from mock_charge_point import MockChargePoint
-from utils import get_basic_auth_headers, validate_schema
-
-BASIC_AUTH_CP = os.environ['BASIC_AUTH_CP']
-BASIC_AUTH_CP_PASSWORD = os.environ['BASIC_AUTH_CP_PASSWORD']
-
 """
 Test case name      Local start transaction - Authorization Blocked
 Test case Id        TC_C_06_CSMS
@@ -33,6 +21,17 @@ Test scenario
     - idTokenInfo.status Blocked or Invalid
 """
 
+import asyncio
+import pytest
+import os
+
+from ocpp.v201.enums import AuthorizationStatusType
+
+from mock_charge_point import MockChargePoint
+from utils import get_basic_auth_headers, validate_schema
+
+BASIC_AUTH_CP = os.environ['BASIC_AUTH_CP']
+BASIC_AUTH_CP_PASSWORD = os.environ['BASIC_AUTH_CP_PASSWORD']
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("connection", [(BASIC_AUTH_CP, get_basic_auth_headers(BASIC_AUTH_CP, BASIC_AUTH_CP_PASSWORD))],

@@ -1,0 +1,17 @@
+sequenceDiagram
+    participant CS as Charging Station
+    participant CSMS as Central System (CSMS)
+    
+    Note over CS, CSMS: Test Case: TC_C_20_CSMS
+    Note over CS, CSMS: Authorization through authorization cache - Invalid
+    
+    Note over CS: State: EVConnectedPreSession
+    Note over CS: EV Driver presents token that is<br/>cached as "Invalid" on CS
+    
+    CS->>CSMS: TransactionEventRequest
+    Note right of CS: triggerReason: Authorized<br/>idToken.idToken: <invalid_idtoken_idtoken><br/>idToken.type: <invalid_idtoken_type><br/>eventType: Updated<br/>TxStartPoint: ParkingBayOccupancy
+    
+    CSMS->>CS: TransactionEventResponse
+    Note left of CSMS: idTokenInfo.status: Invalid or Unknown
+    
+    Note over CS, CSMS: Test Verification Complete

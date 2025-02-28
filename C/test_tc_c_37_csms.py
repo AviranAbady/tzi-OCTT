@@ -22,3 +22,34 @@ Test scenario
 1. The CSMS sends a ClearCacheRequest
 2. The OCTT responds with a ClearCacheResponse with status Accepted
 """
+
+import asyncio
+import pytest
+import os
+
+from ocpp.v201 import call
+from ocpp.v201.enums import ClearCacheStatusType
+from mock_charge_point import MockChargePoint
+from utils import get_basic_auth_headers, validate_schema
+
+BASIC_AUTH_CP = os.environ['BASIC_AUTH_CP']
+BASIC_AUTH_CP_PASSWORD = os.environ['BASIC_AUTH_CP_PASSWORD']
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("connection", [(BASIC_AUTH_CP, get_basic_auth_headers(BASIC_AUTH_CP, BASIC_AUTH_CP_PASSWORD))],
+                         indirect=True)
+async def test_tc_c_37(connection):
+    assert connection.open
+    cp = MockChargePoint(BASIC_AUTH_CP, connection)
+
+    start_task = asyncio.create_task(cp.start())
+
+    request = call.ClearCache()
+    response = await cp.send_clear_cache_request(request)
+
+    assert response is not None
+    assert validate_schema(data=response, schema_file_name='../schema/ClearCacheResponse.json')
+    assert response.status == ClearCacheStatusType.accepted
+
+    start_task.cancel()

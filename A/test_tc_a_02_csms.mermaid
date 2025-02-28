@@ -1,0 +1,16 @@
+sequenceDiagram
+    participant CS as Charging Station (OCTT)
+    participant CSMS as Charging Station Management System
+    
+    Note over CS, CSMS: Test Case TC_A_02_CSMS: Basic Authentication - Username does not equal ChargingStationId
+    Note over CS, CSMS: Security Profile 1 or 2
+    
+    CS->>+CSMS: HTTP Upgrade Request
+    Note right of CS: Authorization: Basic [Base64(Invalid:Password)]
+    Note right of CS: Username ≠ ChargingStationId
+    
+    CSMS-->>-CS: Connection Upgrade Rejected
+    Note over CSMS: Validates credentials
+    Note over CSMS: Detects invalid username
+    
+    Note over CS, CSMS: Test Purpose: Verify CSMS can validate and reject invalid Basic authentication credentials

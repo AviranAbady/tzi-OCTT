@@ -1,0 +1,21 @@
+sequenceDiagram
+    box Charging Station
+        participant OCTT as OCTT
+    end
+    box CSMS
+        participant CSMS as CSMS (System Under Test)
+    end
+    
+    Note over OCTT,CSMS: Test Case: TC_C_07_CSMS
+    Note over OCTT,CSMS: Purpose: Verify CSMS can report expired idToken
+    
+    Note over OCTT,CSMS: Prerequisite: IdToken configured as Expired at the CSMS
+    
+    OCTT->>CSMS: AuthorizeRequest
+    Note right of OCTT: idToken.idToken = <Configured expired_idtoken_idtoken>
+    Note right of OCTT: idToken.type = <Configured expired_idtoken_type>
+    
+    CSMS->>OCTT: AuthorizeResponse
+    Note left of CSMS: idTokenInfo.status = Expired or Invalid
+    
+    Note over OCTT,CSMS: Validation: AuthorizeResponse status must be Expired or Invalid

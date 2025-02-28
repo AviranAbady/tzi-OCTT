@@ -8,8 +8,10 @@ Before
     Memory State: N/a
     Reusable State(s):
         If State is NOT Authorized then execute Reusable State Authorized
-        If EVConnected is true, then proceed to part 2
-        Else proceed to part 1.
+        If EVConnected is true
+            then proceed to part 2
+        Else
+            proceed to part 1.
 
 Scenario (Part 1)
 
@@ -38,3 +40,71 @@ Post condition
     State is EnergyTransferStarted
     EVConnected is true
 """
+import asyncio
+
+from ocpp.v201.enums import (
+    ConnectorStatusType,
+    EventTriggerType,
+    TransactionEventType,
+    TriggerReasonType,
+    ChargingStateType
+)
+from ocpp.v201.call import StatusNotification, NotifyEvent, TransactionEvent
+from ocpp.v201.datatypes import ComponentType, VariableType, EventDataType, VariableMonitoringType
+
+from mock_charge_point import MockChargePoint
+from utils import now_iso
+
+
+async def energy_transfer_started(cp: MockChargePoint, evse_id: int, connector_id: int = 1, transaction_id: str = "transaction_id"):
+
+    # Part 1 - CP is not connected in our case
+    await cp.send_status_notification(connector_id=connector_id,
+                                      status=ConnectorStatusType.occupied)
+
+    component = ComponentType(name="Connector", instance=str(connector_id))
+    variable = VariableType(name="AvailabilityState")
+    event_data = EventDataType(
+        actual_value="Occupied",
+        component=component,
+        variable=variable,
+        trigger=EventTriggerType.delta,
+        variable_monitoring_id=1
+    )
+
+    await cp.send_notify_event([event_data])
+
+    cable_plugged_event = TransactionEvent(
+        event_type=TransactionEventType.updated,
+        timestamp=now_iso(),
+        trigger_reason=TriggerReasonType.cable_plugged_in,
+        seq_no=cp.next_seq_no(),
+        transaction_info={
+            "transaction_id": transaction_id,
+            "charging_state": ChargingStateType.ev_connected,
+        },
+        evse={
+            "id": evse_id,
+            "connector_id": connector_id,
+        },
+    )
+    cable_plugged_event_response = await cp.send_transaction_event_request(cable_plugged_event)
+    assert cable_plugged_event_response is not None
+
+    # Part 2
+    charging_state_changed_event = TransactionEvent(
+        event_type=TransactionEventType.updated,
+        timestamp=now_iso(),
+        trigger_reason=TriggerReasonType.charging_state_changed,
+        seq_no=cp.next_seq_no(),
+        transaction_info={
+            "transaction_id": transaction_id,
+            "charging_state": ChargingStateType.charging,
+        },
+        evse={
+            "id": evse_id,
+            "connector_id": connector_id,
+        },
+    )
+    charging_state_changed_event_response = await cp.send_transaction_event_request(charging_state_changed_event)
+    assert charging_state_changed_event_response is not None

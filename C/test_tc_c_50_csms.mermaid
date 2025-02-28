@@ -1,0 +1,33 @@
+sequenceDiagram
+    participant CS as Charging Station (OCTT)
+    participant CSMS as Charging Station Management System
+    participant OCSP as OCTT OCSP Service
+    
+    Note over CS, CSMS: Prerequisite: EVConnectedPreSession state
+    Note over CS, CSMS: Valid eMAID known by CSMS
+    Note over CS, CSMS: Valid contract certificate
+    
+    CS->>CSMS: AuthorizeRequest
+    Note right of CS: idToken.idToken: <valid_idtoken_idtoken><br>idToken.type: <valid_idtoken_type><br>iso15118CertificateHashData: <hashes from certificate chain>
+    
+    CSMS->>OCSP: OCSP Request
+    Note right of CSMS: Check validity using responder URL<br>from iso15118CertificateHashData
+    
+    OCSP->>CSMS: OCSP Response (Certificate Valid)
+    
+    CSMS->>CS: AuthorizeResponse
+    Note right of CSMS: idTokenInfo.status: Accepted<br>certificateStatus: Accepted
+    
+    CS->>CSMS: TransactionEventRequest
+    Note right of CS: triggerReason: Authorized
+    
+    CSMS->>CS: TransactionEventResponse
+    Note right of CSMS: idTokenInfo.status: Accepted
+    
+    Note over CS, CSMS: Execute Reusable State: EnergyTransferStarted
+    
+    Note over CS, CSMS: Tool Validations
+    Note over CSMS: Step 2: CSMS sends OCSP request for iso15118CertificateHashData
+    Note over OCSP: Step 3: OCTT checks that request for iso15118CertificateHashData is valid
+    Note over CS, CSMS: Step 4: Validate AuthorizeResponse<br>- idTokenInfo.status: Accepted<br>- certificateStatus: Accepted
+    Note over CS, CSMS: Step 6: Validate TransactionEventResponse<br>- idTokenInfo.status: Accepted

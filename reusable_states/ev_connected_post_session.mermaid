@@ -1,0 +1,17 @@
+sequenceDiagram
+    participant CS as Charging Station
+    participant CSMS
+    Note over CS, CSMS: State: EVConnectedPostSession
+    Note over CS, CSMS: System under test: CSMS
+    Note over CS, CSMS: Description: Charging Station is in a state where<br/>energy transfer has been stopped and transaction is NOT<br/>authorized to resume without re-authorization
+    
+    Note over CS, CSMS: Before (Preparations)
+    Note over CS, CSMS: If State is NOT StopAuthorized<br/>then execute Reusable State StopAuthorized
+    
+    Note over CS, CSMS: Main (Scenario)
+    CS->>CSMS: 1. TransactionEventRequest
+    Note right of CS: triggerReason = ChargingStateChanged<br/>transactionInfo.chargingState = EVConnected<br/>eventType = Updated
+    CSMS-->>CS: 2. TransactionEventResponse
+    
+    Note over CS, CSMS: Tool validations: N/a
+    Note over CS, CSMS: Post condition: State is EVConnectedPostSession

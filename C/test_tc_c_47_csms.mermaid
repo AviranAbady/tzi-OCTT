@@ -1,0 +1,21 @@
+sequenceDiagram
+    participant CS as Charging Station (OCTT)
+    participant CSMS as Charging Station Management System
+    
+    Note over CS, CSMS: Prerequisites
+    Note over CS, CSMS: Energy transfer started for EVSE 1 with valid idToken
+    Note over CS, CSMS: Energy transfer started for EVSE 2 with valid idToken2
+    Note over CS, CSMS: A Master Pass idToken is configured in the system
+    
+    Note over CS, CSMS: Master Pass Authentication
+    CS->>CSMS: AuthorizeRequest(idToken.idToken: masterpass_idtoken_idtoken, idToken.type: masterpass_idtoken_type)
+    CSMS-->>CS: AuthorizeResponse
+    
+    Note over CS, CSMS: Stop All Transactions
+    CS->>CSMS: TransactionEventRequest(eventType: Ended, transactionInfo.stoppedReason: MasterPass, idToken.idToken: masterpass_idtoken_idtoken, idToken.type: masterpass_idtoken_type) for EVSE 1
+    CSMS-->>CS: TransactionEventResponse for EVSE 1
+    
+    CS->>CSMS: TransactionEventRequest(eventType: Ended, transactionInfo.stoppedReason: MasterPass, idToken.idToken: masterpass_idtoken_idtoken, idToken.type: masterpass_idtoken_type) for EVSE 2
+    CSMS-->>CS: TransactionEventResponse for EVSE 2
+    
+    Note over CS, CSMS: Result: All transactions stopped, cables unlocked

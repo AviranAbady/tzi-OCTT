@@ -1,0 +1,15 @@
+sequenceDiagram
+    participant CS as Charging Station (OCTT)
+    participant CSMS as Charging Station Management System
+    
+    Note over CS,CSMS: Test Case: TC_C_02_CSMS
+    Note over CS,CSMS: Purpose: Verify CSMS reports invalid idToken
+    
+    CS->>CSMS: AuthorizeRequest
+    Note right of CS: idToken.idToken: <Configured invalid_idtoken_idtoken><br>idToken.type: <Configured invalid_idtoken_type>
+    
+    CSMS-->>CS: AuthorizeResponse
+    Note left of CSMS: idTokenInfo.status: Invalid or Unknown
+    
+    Note over CS,CSMS: Tool Validations:
+    Note over CS,CSMS: - AuthorizeResponse message contains<br>idTokenInfo.status = Invalid or Unknown

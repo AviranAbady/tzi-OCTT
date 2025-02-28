@@ -1,0 +1,19 @@
+sequenceDiagram
+    participant CS as Charging Station (OCTT)
+    participant CSMS as Charging Station Management System
+
+    Note over CS,CSMS: Prerequisite: CSMS supports security profile 1 and/or 2
+    Note over CS,CSMS: Configuration: CSMS has password matching BasicAuthPassword at OCTT
+
+    CS->>CSMS: HTTP Upgrade Request with Authorization Header
+    Note right of CS: AUTHORIZATION: Basic Base64(ChargingStationId:BasicAuthPassword)
+
+    CSMS->>CSMS: Validate username/password
+    CSMS-->>CS: Upgrade to WebSocket Connection
+
+    CS->>CSMS: BootNotificationRequest
+    CSMS-->>CS: BootNotificationResponse (status = Accepted)
+    Note over CSMS: Validation: status must be Accepted
+
+    CS->>CSMS: Notify current state of all connectors
+    CSMS-->>CS: Response to connector status notifications

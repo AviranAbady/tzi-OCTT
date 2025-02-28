@@ -1,0 +1,18 @@
+sequenceDiagram
+    participant CS as Charging Station (OCTT)
+    participant CSMS as Charging System Management System
+    participant OCSP as OCTT OCSP Service
+    
+    Note over CS, CSMS: Prerequisites:<br/>- eMAID is known by CSMS as valid<br/>- Contract certificate is revoked<br/>- iso15118CertificateHashData has responder URL to OCSP service<br/>- CSMS has no cached OCSP response
+    
+    Note over CS, CSMS: Initial State: EVConnectedPreSession
+    
+    CS->>CSMS: AuthorizeRequest<br/>{<br/>  idToken.idToken: <valid_idtoken_idtoken>,<br/>  idToken.type: <valid_idtoken_type>,<br/>  iso15118CertificateHashData: <hashes from configured (V2G) certificate chain><br/>}
+    
+    CSMS->>OCSP: OCSP Request<br/>(check certificate validity using responder URL from iso15118CertificateHashData)
+    
+    OCSP-->>CSMS: OCSP Response<br/>(certificate is revoked)
+    
+    CSMS-->>CS: AuthorizeResponse<br/>{<br/>  idTokenInfo.status: "Invalid"<br/>}
+    
+    Note over CS, CSMS: Authorization is rejected due to revoked certificate

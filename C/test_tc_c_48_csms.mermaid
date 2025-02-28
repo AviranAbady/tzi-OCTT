@@ -1,0 +1,16 @@
+sequenceDiagram
+    participant CS as Charging Station (OCTT)
+    participant CSMS as CSMS (System Under Test)
+    
+    Note over CS, CSMS: Prerequisite: idToken with MasterPass as GroupId is configured
+    Note over CS, CSMS: Initial State: EnergyTransferStarted for all EVSE
+    
+    CS->>+CSMS: 1. AuthorizeRequest<br>(idToken.idToken: valid_idtoken_idtoken,<br>idToken.type: valid_idtoken_type)
+    CSMS-->>-CS: 2. AuthorizeResponse<br>(idTokenInfo.status: Accepted,<br>idTokenInfo.groupIdToken.idToken: masterPassGroupId)
+    
+    Note over CS: User selects to stop transaction via UI
+    
+    CS->>+CSMS: 3. TransactionEventRequest<br>(transactionInfo.stoppedReason: MasterPass,<br>idToken.idToken: masterpass_idtoken_idtoken,<br>idToken.type: masterpass_idtoken_type,<br>eventType: Ended)
+    CSMS-->>-CS: 4. TransactionEventResponse<br>(idTokenInfo.status: Accepted,<br>idTokenInfo.groupIdToken.idToken: masterPassGroupId)
+    
+    Note over CS, CSMS: Result: Transaction is stopped and cable becomes unlocked

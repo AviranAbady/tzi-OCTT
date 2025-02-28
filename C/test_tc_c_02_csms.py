@@ -1,15 +1,3 @@
-import asyncio
-import pytest
-import os
-
-from ocpp.v201.enums import AuthorizationStatusType
-
-from mock_charge_point import MockChargePoint
-from utils import get_basic_auth_headers, validate_schema
-
-BASIC_AUTH_CP = os.environ['BASIC_AUTH_CP']
-BASIC_AUTH_CP_PASSWORD = os.environ['BASIC_AUTH_CP_PASSWORD']
-
 """
 Test case name      Local start transaction - Authorization Invalid/Unknown
 Test case Id        TC_C_02_CSMS
@@ -25,10 +13,28 @@ Test Scenario
 1. The OCTT sends an AuthorizeRequest with
     idToken.idToken <Configured invalid_idtoken_idtoken>
     idToken.type <Configured invalid_idtoken_type>
-    
+
 2. The CSMS responds with an AuthorizeResponse
+
+Tool validations * Step 2:
+Message: AuthorizeResponse
+    - idTokenInfo.status Invalid or Unknown
+
+Post scenario validations:
+- N/a
 """
 
+import asyncio
+import pytest
+import os
+
+from ocpp.v201.enums import AuthorizationStatusType
+
+from mock_charge_point import MockChargePoint
+from utils import get_basic_auth_headers, validate_schema
+
+BASIC_AUTH_CP = os.environ['BASIC_AUTH_CP']
+BASIC_AUTH_CP_PASSWORD = os.environ['BASIC_AUTH_CP_PASSWORD']
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("connection", [(BASIC_AUTH_CP, get_basic_auth_headers(BASIC_AUTH_CP, BASIC_AUTH_CP_PASSWORD))],

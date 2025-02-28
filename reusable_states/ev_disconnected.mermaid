@@ -1,0 +1,18 @@
+sequenceDiagram
+    participant CS as Charging Station (OCTT)
+    participant CSMS as CSMS (System under Test)
+    
+    Note over CS, CSMS: Precondition: Execute Reusable State EVConnectedPostSession if not already in that state
+    
+    Note over CS, CSMS: Main Scenario
+    
+    CS->>CSMS: StatusNotificationRequest<br/>(connectorStatus: Available)
+    CSMS-->>CS: StatusNotificationResponse
+    
+    CS->>CSMS: NotifyEventRequest<br/>(trigger: Delta,<br/>actualValue: Available,<br/>component.name: Connector,<br/>variable.name: AvailabilityState)
+    CSMS-->>CS: NotifyEventResponse
+    
+    CS->>CSMS: TransactionEventRequest<br/>(triggerReason: EVCommunicationLost,<br/>transactionInfo.chargingState: Idle,<br/>transactionInfo.stoppedReason: EVDisconnected,<br/>eventType: Ended)
+    CSMS-->>CS: TransactionEventResponse
+    
+    Note over CS, CSMS: Post condition: State is EVDisconnected

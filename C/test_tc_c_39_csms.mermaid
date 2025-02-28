@@ -1,0 +1,23 @@
+sequenceDiagram
+    participant CS as Charging Station (OCTT)
+    participant CSMS as Charging Station Management System
+    
+    Note over CS,CSMS: Prerequisites: Two valid idTokens with the same GroupId are configured
+    Note over CS,CSMS: Initial State: EVConnectedPreSession
+    
+    CS->>CSMS: 1. AuthorizeRequest(idToken: valid_idtoken2_idtoken, type: valid_idtoken2_type)
+    CSMS->>CS: 2. AuthorizeResponse(idTokenInfo.status: Accepted, idTokenInfo.groupIdToken.idToken: groupIdToken)
+    
+    CS->>CSMS: 3. TransactionEventRequest(triggerReason: Authorized, idToken: valid_idtoken_idtoken, type: valid_idtoken_type, eventType: Started/Updated)
+    CSMS->>CS: 4. TransactionEventResponse(idTokenInfo.status: Accepted, idTokenInfo.groupIdToken.idToken: groupIdToken)
+    
+    Note over CS,CSMS: 5. Execute Reusable State: EnergyTransferStarted
+    
+    CS->>CSMS: 6. AuthorizeRequest(idToken: valid_idtoken2_idtoken, type: valid_idtoken2_type)
+    CSMS->>CS: 7. AuthorizeResponse(idTokenInfo.status: Accepted, idTokenInfo.groupIdToken.idToken: groupIdToken)
+    
+    CS->>CSMS: 8. TransactionEventRequest(triggerReason: StopAuthorized, idToken: valid_idtoken2_idtoken, type: valid_idtoken2_type, eventType: Updated)
+    CSMS->>CS: 9. TransactionEventResponse(idTokenInfo.status: Accepted, idTokenInfo.groupIdToken.idToken: groupIdToken)
+    
+    Note over CS,CSMS: 10. Execute Reusable State: EVConnectedPostSession
+    Note over CS,CSMS: 11. Execute Reusable State: EVDisconnected

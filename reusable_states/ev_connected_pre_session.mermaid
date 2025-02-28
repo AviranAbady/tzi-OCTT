@@ -1,0 +1,23 @@
+sequenceDiagram
+    participant EV as EV
+    participant CS as Charging Station (OCTT)
+    participant CSMS as CSMS (System under Test)
+    
+    Note over CS, CSMS: EVConnectedPreSession State
+    
+    EV->>CS: Cable Plugged In
+    
+    CS->>CSMS: StatusNotificationRequest
+    Note right of CS: connectorStatus = Occupied
+    CSMS-->>CS: StatusNotificationResponse
+    
+    CS->>CSMS: NotifyEventRequest
+    Note right of CS: trigger = Delta<br>actualValue = Occupied<br>component.name = Connector<br>variable.name = AvailabilityState
+    CSMS-->>CS: NotifyEventResponse
+    
+    CS->>CSMS: TransactionEventRequest
+    Note right of CS: triggerReason = CablePluggedIn<br>transactionInfo.chargingState = EVConnected<br>evse.id = <Configured evseId><br>evse.connectorId = <Configured connectorId><br>eventType = Started/Updated
+    Note right of CS: If State is Authorized then<br>eventType = Updated<br>else<br>eventType = Started
+    CSMS-->>CS: TransactionEventResponse
+    
+    Note over CS, CSMS: Post condition: State is EVConnectedPreSession

@@ -1,0 +1,24 @@
+sequenceDiagram
+    participant CS as Charging Station (OCTT)
+    participant CSMS as Charging Station Management System
+    
+    Note over CS,CSMS: Test Case: TC_C_06_CSMS
+    Note over CS,CSMS: "Local start transaction - Authorization Blocked"
+    
+    Note over CSMS: Prerequisites: IdToken configured as Blocked
+    
+    rect rgb(230, 240, 255)
+        Note right of CS: Step 1
+        CS->>CSMS: AuthorizeRequest
+        Note right of CS: idToken.idToken: <Configured blocked_idtoken_idtoken>
+        Note right of CS: idToken.type: <Configured blocked_idtoken_type>
+    end
+    
+    rect rgb(255, 240, 230)
+        Note left of CSMS: Step 2
+        CSMS-->>CS: AuthorizeResponse
+        Note left of CSMS: idTokenInfo.status: Blocked or Invalid
+    end
+    
+    Note over CS,CSMS: Tool Validation
+    Note over CS,CSMS: - Verify idTokenInfo.status equals "Blocked" or "Invalid"

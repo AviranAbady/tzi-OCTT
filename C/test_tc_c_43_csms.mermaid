@@ -1,0 +1,21 @@
+sequenceDiagram
+    title OCPP 2.0.x TC_C_43_CSMS: Authorization by GroupId - Invalid status with Local Authorization List
+    participant CS as Charging Station (OCTT)
+    participant CSMS
+    
+    Note over CS, CSMS: Prerequisite: Two valid idTokens with same GroupId are configured
+    Note over CS, CSMS: Initial state: EVConnectedPreSession
+    
+    CS->>CSMS: TransactionEventRequest<br/>(triggerReason: Authorized,<br/>idToken.idToken: valid_idtoken_idtoken,<br/>idToken.type: valid_idtoken_type,<br/>eventType: Started/Updated)
+    CSMS-->>CS: TransactionEventResponse<br/>(idTokenInfo.status: Accepted,<br/>idTokenInfo.groupIdToken.idToken: groupIdToken)
+    
+    Note over CS, CSMS: Execute Reusable State: EnergyTransferStarted
+    
+    CS->>CSMS: AuthorizeRequest<br/>(idToken.idToken: valid_idtoken2_idtoken,<br/>idToken.type: valid_idtoken2_type)
+    CSMS-->>CS: AuthorizeResponse<br/>(idTokenInfo.status: Accepted,<br/>idTokenInfo.groupIdToken.idToken: groupIdToken)
+    
+    CS->>CSMS: TransactionEventRequest<br/>(triggerReason: StopAuthorized,<br/>idToken.idToken: valid_idtoken2_idtoken,<br/>idToken.type: valid_idtoken2_type,<br/>eventType: Updated)
+    CSMS-->>CS: TransactionEventResponse<br/>(idTokenInfo.status: Accepted,<br/>idTokenInfo.groupIdToken.idToken: groupIdToken)
+    
+    Note over CS, CSMS: Execute Reusable State: EVConnectedPostSession
+    Note over CS, CSMS: Execute Reusable State: EVDisconnected

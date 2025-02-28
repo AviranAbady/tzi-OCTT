@@ -29,3 +29,64 @@ Test Scenario
 2. The CSMS responds with a TransactionEventResponse
     - idTokenInfo.status Invalid or Unknown
 """
+
+import asyncio
+import pytest
+import os
+
+from ocpp.v201.enums import AuthorizationStatusType, TriggerReasonType, TransactionEventType
+from ocpp.v201.call import TransactionEvent
+from ocpp.v201.datatypes import IdTokenType
+from mock_charge_point import MockChargePoint
+from reusable_states.ev_connected_pre_session import ev_connected_pre_session
+from reusable_states.parking_bay_occupied import parking_bay_occupied
+from utils import get_basic_auth_headers, generate_transaction_id, now_iso, validate_schema
+
+BASIC_AUTH_CP = os.environ['BASIC_AUTH_CP']
+BASIC_AUTH_CP_PASSWORD = os.environ['BASIC_AUTH_CP_PASSWORD']
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("connection", [(BASIC_AUTH_CP, get_basic_auth_headers(BASIC_AUTH_CP, BASIC_AUTH_CP_PASSWORD))],
+                         indirect=True)
+async def test_tc_c_20(connection):
+    token_id = os.environ['INVALID_ID_TOKEN']  # Use invalid ID token
+    token_type = os.environ['INVALID_ID_TOKEN_TYPE']  # Use invalid ID token type
+    evse_id = 1
+    connector_id = 1
+
+    assert connection.open
+    cp = MockChargePoint(BASIC_AUTH_CP, connection)
+
+    start_task = asyncio.create_task(cp.start())
+    await parking_bay_occupied(cp, evse_id=evse_id)
+    await ev_connected_pre_session(cp, evse_id=evse_id, connector_id=connector_id)
+
+    transaction_id = generate_transaction_id()
+
+    id_token = IdTokenType(id_token=token_id, type=token_type)
+
+    event = TransactionEvent(
+        event_type=TransactionEventType.updated,
+        timestamp=now_iso(),
+        trigger_reason=TriggerReasonType.authorized,
+        seq_no=cp.next_seq_no(),
+        transaction_info={
+            "transaction_id": transaction_id,
+            "charging_state": "EVConnected",
+            "id_token": id_token,
+        },
+        evse={
+            "id": evse_id,
+            "connector_id": connector_id
+        }
+    )
+    response = await cp.send_transaction_event_request(event)
+
+    assert response is not None
+    assert validate_schema(data=response, schema_file_name='../schema/TransactionEventResponse.json')
+
+    assert response.id_token_info is not None
+    assert response.id_token_info.status in [AuthorizationStatusType.invalid, AuthorizationStatusType.unknown]
+
+    start_task.cancel()
