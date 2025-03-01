@@ -1,0 +1,34 @@
+sequenceDiagram
+    participant User as User (Law Enforcement)
+    participant CS as Charging Station
+    participant CSMS as Charging System Management Server
+    
+    Note over User, CSMS: Prerequisite: Ongoing Transaction(s) & MasterPassGroupId configured
+    
+    User->>CS: Present IdToken (Master Pass)
+    CS->>CSMS: AuthorizeRequest(idToken)
+    CSMS->>CS: AuthorizeResponse(GroupId = MasterPassGroupId)
+    
+    alt If Charging Station has UI
+        CS->>User: Show Master Pass UI
+        User->>CS: Select transaction(s) to stop
+        loop For each selected transaction
+            CS->>CS: Stop energy offer
+            alt If cable not permanently attached
+                CS->>CS: Unlock connector
+            end
+            CS->>CSMS: TransactionEventRequest(eventType = Ended, stopReason = MasterPass)
+            CSMS->>CS: TransactionEventResponse()
+        end
+    else If Charging Station has no UI
+        loop For all ongoing transactions
+            CS->>CS: Stop energy offer
+            alt If cable not permanently attached
+                CS->>CS: Unlock connector
+            end
+            CS->>CSMS: TransactionEventRequest(eventType = Ended, stopReason = MasterPass)
+            CSMS->>CS: TransactionEventResponse()
+        end
+    end
+    
+    Note over User, CSMS: Postcondition: Selected or all transaction(s) stopped

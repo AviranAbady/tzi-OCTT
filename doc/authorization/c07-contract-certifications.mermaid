@@ -1,0 +1,29 @@
+sequenceDiagram
+    participant EV as EV
+    participant CS as Charging Station
+    participant CSMS as CSMS
+    participant OCSP as OCSP/(Sub)CA
+
+    EV->>CS: ServiceDiscoveryReq()
+    CS->>EV: ServiceDiscoveryRes(PaymentServiceList: Contract, ExternalPayment)
+    EV->>CS: PaymentServiceSelectionReq(paymentOption: Contract)
+    CS->>EV: PaymentServiceSelectionRes()
+    
+    alt Cached certificate checking
+        EV->>CS: PaymentDetailsReq(ContractCertificateChain, EMAID)
+        CS->>CSMS: AuthorizeRequest(idToken.EMAID, iso15118CertificateHashData[0..4])
+        Note over CSMS: check certificate cache()
+        CSMS->>CS: AuthorizeResponse(idTokenInfo, certificateStatus)
+        CS->>EV: PaymentDetailsRes(GenChallenge)
+        EV->>CS: AuthorizationReq(GenChallenge)
+        CS->>EV: AuthorizationRes(EVSEProcessing, ResponseCode)
+    else Real-time certificate checking
+        EV->>CS: PaymentDetailsReq(ContractCertificateChain, EMAID)
+        CS->>CSMS: AuthorizeRequest(idToken.EMAID, iso15118CertificateHashData[0..4])
+        CSMS->>OCSP: OCSP request()
+        CS->>EV: PaymentDetailsRes(GenChallenge)
+        EV->>CS: AuthorizationReq(GenChallenge)
+        OCSP->>CSMS: OCSP response()
+        CSMS->>CS: AuthorizeResponse(idTokenInfo, certificateStatus)
+        CS->>EV: AuthorizationRes(EVSEProcessing, ResponseCode)
+    end

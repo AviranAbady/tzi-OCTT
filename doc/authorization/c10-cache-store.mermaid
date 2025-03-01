@@ -1,0 +1,42 @@
+sequenceDiagram
+    participant CS as Charging Station
+    participant Cache as Authorization Cache
+    participant CSMS as CSMS (Central System)
+    
+    Note over CS, CSMS: Precondition: AuthCacheEnabled = true
+    
+    alt AuthorizeRequest Flow
+        CS->>CSMS: AuthorizeRequest(idToken)
+        CSMS-->>CS: AuthorizeResponse(idTokenInfo)
+        CS->>Cache: Store IdTokenInfo in Authorization Cache
+    else TransactionEvent Flow
+        CS->>CSMS: TransactionEventRequest(idToken)
+        CSMS-->>CS: TransactionEventResponse(idTokenInfo)
+        CS->>Cache: Store IdTokenInfo in Authorization Cache
+    end
+    
+    Note over CS, Cache: Cache Management
+    
+    alt If Cache is Full
+        CS->>Cache: Remove entries with status other than Accepted
+        CS->>Cache: If still full, remove oldest entries
+    end
+    
+    alt Cache Expiry Rules
+        alt If cacheExpiryDateTime is provided
+            CS->>Cache: Use cacheExpiryDateTime to determine expiry
+        else If no cacheExpiryDateTime
+            CS->>Cache: Use AuthCacheLifeTime configuration variable
+        end
+        CS->>Cache: Remove expired entries or mark as Expired
+    end
+    
+    alt Offline Authorization
+        Note over CS: Charging Station is offline
+        CS->>Cache: Check Authorization Cache for idToken
+        alt If idToken found with status Accepted
+            CS->>CS: Authorize
+        else If idToken found with other status
+            Note over CS: Wait until online to verify current state
+        end
+    end

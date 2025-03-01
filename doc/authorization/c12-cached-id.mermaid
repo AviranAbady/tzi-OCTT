@@ -1,0 +1,29 @@
+sequenceDiagram
+    participant Driver as EV Driver
+    participant CS as Charging Station
+    participant CSMS
+    
+    Note over CS: Prerequisites:<br/>AuthCacheEnabled = true<br/>LocalPreAuthorize = true<br/>IdToken cached and valid
+
+    Driver->>CS: Plug in cable
+    CS->>CSMS: StatusNotificationRequest(Occupied)
+    CSMS->>CS: StatusNotificationResponse()
+    CS->>CSMS: TransactionEventRequest(eventType = Started,...)
+    CSMS->>CS: TransactionEventResponse(...)
+    
+    Driver->>CS: Present IdToken
+    
+    Note over CS: Check authorization cache
+    
+    opt Cable not permanently attached
+        CS->>CS: Lock connector
+    end
+    
+    CS->>CS: Start energy offer
+    
+    CS->>CSMS: TransactionEventRequest(eventType = Updated, chargingState = Charging,...)
+    CSMS->>CS: TransactionEventResponse(...)
+    
+    Note over CS, CSMS: If IdToken is no longer valid in CSMS:<br/>- Handle based on MaxEnergyOnInvalidId and StopTxOnInvalidId<br/>- CS may stop energy offering or transaction
+
+    Note over Driver, CSMS: Continue with E01 - Start Transaction - Cable Plugin First

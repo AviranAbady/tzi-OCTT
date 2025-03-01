@@ -1,0 +1,35 @@
+sequenceDiagram
+    participant EVDriver1
+    participant EVDriver2
+    participant CS as Charging Station
+    participant CSMS
+    
+    EVDriver1->>CS: Present IdToken(001)
+    
+    opt If IdToken is not in Local Authorization List or Auth Cache
+        CS->>CSMS: AuthorizeRequest(IdToken=001)
+        CSMS-->>CS: AuthorizeResponse(groupIdToken=123, status=Accepted)
+        
+        Note over CS: Store groupIdToken with authorization info
+    end
+    
+    opt Transaction Started
+        CS->>CSMS: TransactionEventRequest(eventType=Started, triggerReason=Authorized)
+        CSMS-->>CS: TransactionEventResponse()
+    end
+    
+    EVDriver2->>CS: Present IdToken(002)
+    
+    opt If IdToken different from transaction start AND NOT (groupIdTokens in Auth Cache AND same)
+        CS->>CSMS: AuthorizeRequest(IdToken=002)
+        CSMS-->>CS: AuthorizeResponse(groupIdToken=123, status=Accepted)
+        
+        Note over CS: Authorize action based on matching groupIdToken
+    end
+    
+    CS->>CSMS: TransactionEventRequest(eventType=Ended, triggerReason=StopAuthorized, stoppedReason=Local)
+    CSMS-->>CS: TransactionEventResponse()
+
+    opt Notification
+        Note over CS,CSMS: Optional notification processes
+    end

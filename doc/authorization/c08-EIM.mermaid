@@ -1,0 +1,30 @@
+sequenceDiagram
+    participant EV as EV
+    participant CS as Charging Station
+    participant CSMS as CSMS
+    
+    Note over EV, CS: Communication between EV and EVSE established
+    
+    alt Identify first: User might identify prior to connecting the EV to the EVSE
+        EV->>CS: ServiceDiscoveryReq()
+        CS->>EV: ServiceDiscoveryRes(PaymentServiceList: ExternalPayment)
+        EV->>CS: PaymentServiceSelectionReq(paymentOption: ExternalPayment)
+        CS->>EV: PaymentServiceSelectionRes()
+        EV->>CS: AuthorizationReq()
+        
+        CS->>CSMS: AuthorizeRequest(idToken)
+        Note right of CS: idToken contains External Identification Means (EIM)
+        CSMS->>CS: AuthorizeResponse(idTokenInfo)
+        
+        CS->>EV: AuthorizationRes()
+    else Identify after plugin: User might identify after plugging in, sequence time-out is 60 seconds
+        EV->>CS: AuthorizationReq()
+        
+        CS->>CSMS: AuthorizeRequest(idToken)
+        Note right of CS: idToken contains External Identification Means (EIM)
+        CSMS->>CS: AuthorizeResponse(idTokenInfo)
+        
+        CS->>EV: AuthorizationRes()
+    end
+    
+    Note over EV, CSMS: Authorization successful (C08.FR.01, C08.FR.02)

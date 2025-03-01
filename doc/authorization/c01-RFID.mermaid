@@ -1,0 +1,56 @@
+sequenceDiagram
+    participant EV as EV Driver
+    participant CS as Charging Station
+    participant CSMS as CSMS
+
+    EV->>CS: Present RFID card (idToken)
+
+    alt idToken in Local Authorization List/Cache
+        CS-->>CS: Validate idToken locally
+
+        alt idToken valid locally
+            CS->>EV: Authorization accepted
+        else idToken invalid or CS configured to always verify
+            CS->>CSMS: AuthorizeRequest(idToken)
+            CSMS->>CS: AuthorizeResponse(idTokenInfo)
+
+            alt idTokenInfo.status = Accepted
+                Note over CS: Authorization successful
+
+                alt idTokenInfo has empty/absent evseId list
+                    Note over CS: Allow charging at any EVSE
+                else idTokenInfo has specific evseId list
+                    Note over CS: Allow charging only at specified EVSEs
+                end
+
+                CS->>EV: Authorization accepted
+            else idTokenInfo.status != Accepted
+                CS->>EV: Authorization rejected with reason
+                Note over CS: Possible rejection reasons:<br/>- Invalid<br/>- Expired<br/>- Blocked<br/>- Unknown<br/>- NotAtThisLocation<br/>- NotAllowedTypeEVSE
+            end
+        end
+    else idToken not in Local Authorization List/Cache
+        CS->>CSMS: AuthorizeRequest(idToken)
+        CSMS->>CS: AuthorizeResponse(idTokenInfo)
+
+        alt idTokenInfo.status = Accepted
+            Note over CS: Authorization successful
+
+            alt idTokenInfo has empty/absent evseId list
+                Note over CS: Allow charging at any EVSE
+            else idTokenInfo has specific evseId list
+                Note over CS: Allow charging only at specified EVSEs
+            end
+
+            CS->>EV: Authorization accepted
+        else idTokenInfo.status != Accepted
+            CS->>EV: Authorization rejected with reason
+            Note over CS: Possible rejection reasons:<br/>- Invalid<br/>- Expired<br/>- Blocked<br/>- Unknown<br/>- NotAtThisLocation<br/>- NotAllowedTypeEVSE
+        end
+    end
+
+    alt During active transaction & same idToken presented
+        EV->>CS: Present same RFID card (idToken)
+        CS-->>CS: End authorization without sending AuthorizeRequest
+        CS->>EV: Authorization ended
+    end

@@ -1,0 +1,22 @@
+sequenceDiagram
+    participant EVDriver as EV Driver
+    participant CS as Charging Station
+    participant CSMS as CSMS
+
+    EVDriver->>CS: Plug in charging cable
+    CS->>CSMS: StatusNotificationRequest(Occupied)
+    CSMS-->>CS: StatusNotificationResponse()
+    CS->>CSMS: TransactionEventRequest(eventType = Started,...)
+    CSMS-->>CS: TransactionEventResponse(...)
+    
+    EVDriver->>CS: Press Start Button
+    
+    opt if cable not permanently attached
+        CS->>CS: lock connector
+    end
+    
+    CS->>CS: Start energy offer
+    CS->>CSMS: TransactionEventRequest(eventType = Updated, idToken.type = NoAuthorization,...)
+    CSMS-->>CS: TransactionEventResponse(idTokenInfo.status = Accepted,...)
+    
+    EVDriver->>CS: Unplug cable
