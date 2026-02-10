@@ -1,0 +1,28 @@
+sequenceDiagram
+    participant CS as Charging Station (OCTT)
+    participant CSMS as CSMS (System Under Test)
+
+    Note over CS,CSMS: Test Case: TC_H_14_CSMS
+    Note over CS,CSMS: Reserve an unspecified EVSE - Amount of EVSEs equals reservations
+
+    Note over CS,CSMS: Manual Action: Trigger CSMS to send ReserveNowRequest for unspecified EVSE
+
+    loop Repeat for configured number of EVSEs
+        CSMS->>CS: 1. ReserveNowRequest
+        Note left of CSMS: evseId = omit<br/>connectorType = omit<br/>idToken.idToken = <Configured><br/>idToken.type = <Configured>
+
+        CS-->>CSMS: 2. ReserveNowResponse
+        Note right of CS: status = Accepted
+    end
+
+    Note over CS,CSMS: Note: Step 1 must execute for the amount of EVSEs configured
+
+    CS->>CSMS: 3. StatusNotificationRequest
+    Note right of CS: connectorStatus = Reserved
+
+    CS->>CSMS: 3. NotifyEventRequest
+    Note right of CS: trigger = Delta<br/>actualValue = "Reserved"<br/>component.name = "Connector"<br/>variable.name = "AvailabilityState"
+
+    CSMS-->>CS: 4. Responds accordingly
+
+    Note over CS,CSMS: Note: Step 3 executed after last ReserveNowRequest

@@ -1,0 +1,16 @@
+sequenceDiagram
+    participant CS as Charging Station (OCTT)
+    participant CSMS as CSMS (System Under Test)
+
+    Note over CS,CSMS: Test Case: TC_F_20_CSMS
+    Note over CS,CSMS: Trigger message - Heartbeat
+
+    CSMS->>CS: 1. TriggerMessageRequest
+    Note left of CSMS: requestedMessage = Heartbeat
+
+    CS-->>CSMS: 2. TriggerMessageResponse
+    Note right of CS: status = Accepted
+
+    CS->>CSMS: 3. HeartbeatRequest
+
+    CSMS-->>CS: 4. HeartbeatResponse

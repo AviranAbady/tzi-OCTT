@@ -1,0 +1,12 @@
+sequenceDiagram
+    participant CS as Charging Station (OCTT)
+    participant CSMS as CSMS (System Under Test)
+
+    Note over CS,CSMS: Test Case: TC_F_06_CSMS
+    Note over CS,CSMS: Remote unlock Connector<br/>Without ongoing transaction - Accepted
+
+    CSMS->>CS: 1. UnlockConnectorRequest
+    Note left of CSMS: evseId = <Configured evseId><br/>connectorId = <Configured connectorId>
+
+    CS-->>CSMS: 2. UnlockConnectorResponse
+    Note right of CS: status = Unlocked

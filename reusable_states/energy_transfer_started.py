@@ -43,33 +43,37 @@ Post condition
 import asyncio
 
 from ocpp.v201.enums import (
-    ConnectorStatusType,
-    EventTriggerType,
-    TransactionEventType,
-    TriggerReasonType,
-    ChargingStateType
+    ConnectorStatusEnumType as ConnectorStatusType,
+    EventTriggerEnumType as EventTriggerType,
+    EventNotificationEnumType as EventNotificationType,
+    TransactionEventEnumType as TransactionEventType,
+    TriggerReasonEnumType as TriggerReasonType,
+    ChargingStateEnumType as ChargingStateType,
 )
 from ocpp.v201.call import StatusNotification, NotifyEvent, TransactionEvent
 from ocpp.v201.datatypes import ComponentType, VariableType, EventDataType, VariableMonitoringType
 
-from mock_charge_point import MockChargePoint
+from tzi_charge_point import TziChargePoint
 from utils import now_iso
 
 
-async def energy_transfer_started(cp: MockChargePoint, evse_id: int, connector_id: int = 1, transaction_id: str = "transaction_id"):
+async def energy_transfer_started(cp: TziChargePoint, evse_id: int, connector_id: int = 1, transaction_id: str = "transaction_id"):
 
     # Part 1 - CP is not connected in our case
     await cp.send_status_notification(connector_id=connector_id,
-                                      status=ConnectorStatusType.occupied)
+                                      status=ConnectorStatusType.occupied,
+                                      evse_id=evse_id)
 
     component = ComponentType(name="Connector", instance=str(connector_id))
     variable = VariableType(name="AvailabilityState")
     event_data = EventDataType(
+        event_id=evse_id,
+        timestamp=now_iso(),
+        trigger=EventTriggerType.delta,
         actual_value="Occupied",
+        event_notification_type=EventNotificationType.custom_monitor,
         component=component,
         variable=variable,
-        trigger=EventTriggerType.delta,
-        variable_monitoring_id=1
     )
 
     await cp.send_notify_event([event_data])

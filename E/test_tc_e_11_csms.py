@@ -1,0 +1,148 @@
+"""
+TC_E_11 - Start transaction options - DataSigned
+Use case: E01(S4) | Requirement: E01.FR.04
+E01.FR.04: TxStartPoint contains: DataSigned AND The Charging Station has a meter that can sign measured values AND Configuration Variable: SampledDataSignReadings set to true AND The Charging Station has retrieved a signed meter value AND No transaction has started yet on this EVSE. The Charging Station SHALL start a transaction and send a TransactionEventRequest (eventType = Started) to the CSMS.
+    Precondition: TxStartPoint contains: DataSigned AND The Charging Station has a meter that can sign measured values AND Configuration Variable: SampledDataSignReadings set to true AND The Charging Station has retrieved a signed meter value AND No transaction has started yet on this EVSE
+System under test: CSMS
+
+Purpose: Verify the CSMS handles a Charging Station that starts a transaction when signed meter
+values are received (TxStartPoint = DataSigned).
+
+Configuration:
+    CSMS_ADDRESS     - WebSocket URL of the CSMS
+    BASIC_AUTH_CP    - Charge Point identifier
+    BASIC_AUTH_CP_PASSWORD - Charge Point password
+    VALID_ID_TOKEN   - Valid idToken value
+    VALID_ID_TOKEN_TYPE - Valid idToken type
+    CONFIGURED_EVSE_ID   - EVSE id (default 1)
+    CONFIGURED_CONNECTOR_ID - Connector id (default 1)
+"""
+import asyncio
+import os
+import sys
+
+import pytest
+
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+from ocpp.v201.call import TransactionEvent
+from ocpp.v201.datatypes import ComponentType, VariableType, EventDataType, MeterValueType, SampledValueType, SignedMeterValueType
+from ocpp.v201.enums import (
+    ConnectorStatusEnumType as ConnectorStatusType,
+    EventTriggerEnumType as EventTriggerType,
+    EventNotificationEnumType as EventNotificationType,
+    TransactionEventEnumType as TransactionEventType,
+    TriggerReasonEnumType as TriggerReasonType,
+    ChargingStateEnumType as ChargingStateType,
+    AuthorizationStatusEnumType as AuthorizationStatusType,
+    ReadingContextEnumType as ReadingContextType,
+)
+
+from tzi_charge_point import TziChargePoint
+from utils import get_basic_auth_headers, generate_transaction_id, now_iso
+
+CSMS_ADDRESS = os.environ.get('CSMS_ADDRESS', 'ws://localhost:8081')
+BASIC_AUTH_CP = os.environ.get('BASIC_AUTH_CP', 'CP_1')
+BASIC_AUTH_CP_PASSWORD = os.environ.get('BASIC_AUTH_CP_PASSWORD', '0123456789123456')
+VALID_ID_TOKEN = os.environ.get('VALID_ID_TOKEN', '100000C01')
+VALID_ID_TOKEN_TYPE = os.environ.get('VALID_ID_TOKEN_TYPE', 'Central')
+EVSE_ID = int(os.environ.get('CONFIGURED_EVSE_ID', '1'))
+CONNECTOR_ID = int(os.environ.get('CONFIGURED_CONNECTOR_ID', '1'))
+
+# Placeholder signed meter value - replace with actual signing implementation
+SAMPLE_SIGNED_METER_VALUE = SignedMeterValueType(
+    signed_meter_data='c2FtcGxlX3NpZ25lZF9kYXRh',  # base64 placeholder
+    signing_method='ECDSA',
+    encoding_method='Other',
+    public_key='c2FtcGxlX3B1YmxpY19rZXk=',  # base64 placeholder
+)
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("connection", [
+    (BASIC_AUTH_CP, get_basic_auth_headers(BASIC_AUTH_CP, BASIC_AUTH_CP_PASSWORD))
+], indirect=True)
+async def test_tc_e_11(connection):
+    """Start transaction options - DataSigned (E01.FR.04).
+    E01.FR.04: TxStartPoint contains: DataSigned AND The Charging Station has a meter that can sign measured values AND Configuration Variable: SampledDataSignReadings set to true AND The Charging Station has retrieved a signed meter value AND No transaction has started yet on this EVSE. The Charging Station SHALL start a transaction and send a TransactionEventRequest (eventType = Started) to the CSMS.
+        Precondition: TxStartPoint contains: DataSigned AND The Charging Station has a meter that can sign measured values AND Configuration Variable: SampledDataSignReadings set to true AND The Charging Station has retrieved a signed meter value AND No transaction has started yet on this EVSE
+    """
+    assert connection.open
+
+    cp = TziChargePoint(BASIC_AUTH_CP, connection)
+    start_task = asyncio.create_task(cp.start())
+
+    transaction_id = generate_transaction_id()
+
+    # Step 1-2: Authorize
+    authorize_response = await cp.send_authorization_request(
+        id_token=VALID_ID_TOKEN, token_type=VALID_ID_TOKEN_TYPE
+    )
+    assert authorize_response is not None
+    assert authorize_response.id_token_info.status == AuthorizationStatusType.accepted
+
+    # Step 3-4: StatusNotification + NotifyEvent
+    status_response = await cp.send_status_notification(connector_id=CONNECTOR_ID, status=ConnectorStatusType.occupied)
+    assert status_response is not None
+
+    event_data = [EventDataType(
+        trigger=EventTriggerType.delta,
+        actual_value='Occupied',
+        component=ComponentType(name='Connector'),
+        variable=VariableType(name='AvailabilityState'),
+        timestamp=now_iso(),
+        event_id=EVSE_ID,
+        event_notification_type=EventNotificationType.custom_monitor,
+    )]
+    notify_response = await cp.send_notify_event(data=event_data)
+    assert notify_response is not None
+
+    # Step 5-6: TransactionEvent Started / SignedDataReceived with meter value
+    meter_value = MeterValueType(
+        timestamp=now_iso(),
+        sampled_value=[SampledValueType(
+            value=0.0,
+            context=ReadingContextType.transaction_begin,
+            signed_meter_value=SAMPLE_SIGNED_METER_VALUE,
+        )],
+    )
+
+    started_event = TransactionEvent(
+        event_type=TransactionEventType.started,
+        timestamp=now_iso(),
+        trigger_reason=TriggerReasonType.signed_data_received,
+        seq_no=cp.next_seq_no(),
+        transaction_info={
+            'transaction_id': transaction_id,
+            'charging_state': ChargingStateType.suspended_evse,
+        },
+        id_token={
+            'id_token': VALID_ID_TOKEN,
+            'type': VALID_ID_TOKEN_TYPE,
+        },
+        evse={
+            'id': EVSE_ID,
+            'connector_id': CONNECTOR_ID,
+        },
+        meter_value=[meter_value],
+    )
+    started_response = await cp.send_transaction_event_request(started_event)
+    assert started_response is not None
+    if started_response.id_token_info is not None:
+        assert started_response.id_token_info.status == AuthorizationStatusType.accepted
+
+    # Step 7-8: TransactionEvent Updated / ChargingStateChanged / Charging
+    charging_event = TransactionEvent(
+        event_type=TransactionEventType.updated,
+        timestamp=now_iso(),
+        trigger_reason=TriggerReasonType.charging_state_changed,
+        seq_no=cp.next_seq_no(),
+        transaction_info={
+            'transaction_id': transaction_id,
+            'charging_state': ChargingStateType.charging,
+        },
+    )
+    charging_response = await cp.send_transaction_event_request(charging_event)
+    assert charging_response is not None
+
+    start_task.cancel()

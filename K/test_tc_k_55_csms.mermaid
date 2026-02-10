@@ -1,0 +1,43 @@
+sequenceDiagram
+    participant CS as Charging Station (OCTT)
+    participant CSMS as CSMS (System Under Test)
+
+    Note over CS,CSMS: Test Case: TC_K_55_CSMS
+    Note over CS,CSMS: Charging with load leveling -<br/>EV charging profile exceeds limits
+
+    Note over CS,CSMS: Reusable States: Authorized + EVConnectedPreSession
+
+    CS->>CSMS: 1. NotifyEVChargingNeedsRequest
+    Note right of CS: evseId = <Configured evseId>
+
+    CSMS-->>CS: 2. NotifyEVChargingNeedsResponse
+    Note left of CSMS: status = Accepted
+
+    CSMS->>CS: 3. SetChargingProfileRequest
+    Note left of CSMS: chargingProfilePurpose = TxProfile<br/>transactionId = <Provided transactionId>
+
+    CS-->>CSMS: 4. SetChargingProfileResponse
+    Note right of CS: status = Accepted
+
+    CS->>CSMS: 5. NotifyEVChargingScheduleRequest
+    Note right of CS: chargingSchedule exceeds limits of step 3
+
+    CSMS-->>CS: 6. NotifyEVChargingScheduleResponse
+    Note left of CSMS: status = Rejected
+
+    CS->>CSMS: 7. TransactionEventRequest
+    Note right of CS: triggerReason = ChargingStateChanged<br/>chargingState = Charging
+
+    CSMS-->>CS: 8. TransactionEventResponse
+
+    CSMS->>CS: 9. SetChargingProfileRequest
+    Note left of CSMS: chargingProfilePurpose = TxProfile<br/>transactionId = <Provided transactionId>
+
+    CS-->>CSMS: 10. SetChargingProfileResponse
+    Note right of CS: status = Accepted
+
+    CS->>CSMS: 11. NotifyEVChargingScheduleRequest
+    Note right of CS: chargingSchedule = <Schedule from step 9>
+
+    CSMS-->>CS: 12. NotifyEVChargingScheduleResponse
+    Note left of CSMS: status = Accepted

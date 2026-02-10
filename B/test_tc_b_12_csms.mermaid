@@ -1,0 +1,18 @@
+sequenceDiagram
+    participant CS as Charging Station (OCTT)
+    participant CSMS as CSMS (System Under Test)
+
+    Note over CS,CSMS: Test Case: TC_B_12_CSMS
+    Note over CS,CSMS: Get Base Report - ConfigurationInventory
+
+    Note over CSMS: Manual Action: Instruct CSMS to retrieve<br/>a ConfigurationInventory report
+
+    CSMS->>CS: 1. GetBaseReportRequest
+    Note left of CSMS: requestId >= 0<br/>reportBase = ConfigurationInventory
+
+    CS-->>CSMS: 2. GetBaseReportResponse (status: Accepted)
+
+    CS->>CSMS: 3. NotifyReportRequest(s)
+    Note right of CS: Report data with configuration inventory
+
+    CSMS-->>CS: 4. NotifyReportResponse

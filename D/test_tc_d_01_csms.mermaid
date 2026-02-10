@@ -1,0 +1,21 @@
+sequenceDiagram
+    participant OCTT as OCTT (CS Simulator)
+    participant CSMS
+
+    Note over OCTT,CSMS: TC_D_01_CSMS - Send Local Authorization List - Full
+
+    OCTT->>CSMS: BootNotificationRequest(reason=PowerUp)
+    CSMS-->>OCTT: BootNotificationResponse(status=Accepted)
+
+    OCTT->>CSMS: StatusNotificationRequest(connectorStatus=Available)
+    CSMS-->>OCTT: StatusNotificationResponse()
+
+    Note over CSMS: [Optional] CSMS queries current list version before sending
+    CSMS->>OCTT: GetLocalListVersionRequest()
+    OCTT-->>CSMS: GetLocalListVersionResponse(versionNumber=1)
+
+    Note over CSMS: CSMS sends full local authorization list
+    CSMS->>OCTT: SendLocalListRequest(updateType=Full, versionNumber>0, localAuthorizationList=[...])
+    OCTT-->>CSMS: SendLocalListResponse(status=Accepted)
+
+    Note over OCTT,CSMS: Validation: updateType=Full, versionNumber>0, localAuthorizationList non-empty

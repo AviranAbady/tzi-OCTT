@@ -1,0 +1,27 @@
+sequenceDiagram
+    participant CS as Charging Station (OCTT)
+    participant CSMS as CSMS (System Under Test)
+
+    Note over CS,CSMS: Test Case: TC_M_20_CSMS
+    Note over CS,CSMS: Delete a certificate - Success
+    Note over CS,CSMS: Steps 1-5 repeated for SHA256, SHA384, SHA512
+
+    Note over CS,CSMS: Reusable State: CertificateInstalled (CSMSRootCertificate)
+
+    CSMS->>CS: 1. InstallCertificateRequest
+    Note left of CSMS: certificateType = CSMSRootCertificate
+
+    CS-->>CSMS: InstallCertificateResponse
+    Note right of CS: status = Accepted
+
+    CSMS->>CS: 2. GetInstalledCertificateIdsRequest
+    Note left of CSMS: certificateType contains CSMSRootCertificate<br/>OR is omitted
+
+    CS-->>CSMS: 3. GetInstalledCertificateIdsResponse
+    Note right of CS: status = Accepted<br/>certificateHashDataChain[0].certificateType = CSMSRootCertificate<br/>certificateHashDataChain[0].hashAlgorithm = SHA256
+
+    CSMS->>CS: 4. DeleteCertificateRequest
+    Note left of CSMS: certificateHashData = <from Step 3>
+
+    CS-->>CSMS: 5. DeleteCertificateResponse
+    Note right of CS: status = Accepted

@@ -1,0 +1,15 @@
+sequenceDiagram
+    participant CS as Charging Station (OCTT)
+    participant CSMS as Charging Station Management System
+
+    Note over CS,CSMS: TC_E_14 - Stop transaction options - EVDisconnected - Charging Station side
+    Note over CS,CSMS: Use case: E06(S2) | Requirement: E06.FR.02
+    Note over CS,CSMS: Before: Reusable State EVConnectedPostSession
+
+    Note over CS,CSMS: [Reusable State: EVDisconnected]
+    CS->>CSMS: StatusNotificationRequest [connectorStatus=Available]
+    CSMS-->>CS: StatusNotificationResponse
+    CS->>CSMS: NotifyEventRequest [trigger=Delta, actualValue=Available]
+    CSMS-->>CS: NotifyEventResponse
+    CS->>CSMS: TransactionEventRequest [eventType=Ended, triggerReason=EVCommunicationLost, chargingState=Idle, stoppedReason=EVDisconnected]
+    CSMS-->>CS: TransactionEventResponse

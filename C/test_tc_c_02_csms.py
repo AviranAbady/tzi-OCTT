@@ -3,6 +3,13 @@ Test case name      Local start transaction - Authorization Invalid/Unknown
 Test case Id        TC_C_02_CSMS
 Use case Id(s)      C01, C04, C06
 Requirement(s)      C01.FR.07 OR C04.FR.01 OR C06.FR.04
+
+Requirement Details:
+    C01.FR.07: AuthorizeResponse SHALL include an authorization status value indicating acceptance or a reason for rejection. See AuthorizationStatusEnu mType for the possible reasons of rejection.
+    C04.FR.01: When the CSMS receives an AuthorizeRequest with a keyCode that is not valid at this Charging Station The CSMS SHALL respond with an AuthorizeResponse message with status = Invalid.
+        Precondition: When the CSMS receives an AuthorizeRequest with a keyCode that is not valid at this Charging Station
+    C06.FR.04: If the CSMS receives an AuthorizeRequest. it SHALL respond with an AuthorizeResponse and SHALL include an authorization status value indicating acceptance or a reason for rejection. C. Authorization 92/491 Part 2 - Specification
+        Precondition: If the CSMS receives an AuthorizeRequest.
 System under test   CSMS
 
 Description         When a Charging Station needs to charge an EV, it needs to authorize the EV Driver first at the CSMS before
@@ -28,9 +35,9 @@ import asyncio
 import pytest
 import os
 
-from ocpp.v201.enums import AuthorizationStatusType
+from ocpp.v201.enums import AuthorizationStatusEnumType as AuthorizationStatusType
 
-from mock_charge_point import MockChargePoint
+from tzi_charge_point import TziChargePoint
 from utils import get_basic_auth_headers, validate_schema
 
 BASIC_AUTH_CP = os.environ['BASIC_AUTH_CP']
@@ -45,7 +52,7 @@ async def test_tc_c_02(connection):
 
     assert connection.open
 
-    cp = MockChargePoint(BASIC_AUTH_CP, connection)
+    cp = TziChargePoint(BASIC_AUTH_CP, connection)
 
     start_task = asyncio.create_task(cp.start())
 

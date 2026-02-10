@@ -1,0 +1,17 @@
+sequenceDiagram
+    participant CS as Charging Station (OCTT)
+    participant CSMS as CSMS (System Under Test)
+
+    Note over CS,CSMS: Test Case: TC_F_23_CSMS
+    Note over CS,CSMS: Trigger message - StatusNotification<br/>Specific EVSE - Available
+
+    CSMS->>CS: 1. TriggerMessageRequest
+    Note left of CSMS: requestedMessage = StatusNotification<br/>evse.id = <Configured evseId>
+
+    CS-->>CSMS: 2. TriggerMessageResponse
+    Note right of CS: status = Accepted
+
+    CS->>CSMS: 3. StatusNotificationRequest + NotifyEventRequest
+    Note right of CS: StatusNotificationRequest:<br/>connectorStatus = Available<br/>evseId = <Configured evseId><br/>connectorId = <Configured connectorId><br/><br/>NotifyEventRequest:<br/>trigger = Delta<br/>actualValue = "Available"<br/>component.name = "Connector"<br/>component.evse.id = <Configured evseId><br/>component.evse.connectorId = <Configured connectorId><br/>variable.name = "AvailabilityState"
+
+    CSMS-->>CS: 4. The CSMS responds accordingly

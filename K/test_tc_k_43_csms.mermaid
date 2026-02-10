@@ -1,0 +1,12 @@
+sequenceDiagram
+    participant CS as Charging Station (OCTT)
+    participant CSMS as CSMS (System Under Test)
+
+    Note over CS,CSMS: Test Case: TC_K_43_CSMS
+    Note over CS,CSMS: Get Composite Schedule - Specific EVSE
+
+    CSMS->>CS: 1. GetCompositeScheduleRequest
+    Note left of CSMS: evseId = 1<br/>duration = <Configured duration><br/>chargingRateUnit = <Configured chargingRateUnit>
+
+    CS-->>CSMS: 2. GetCompositeScheduleResponse
+    Note right of CS: status = Accepted<br/>schedule.evseId = 1<br/>schedule.duration = 300<br/>schedule.chargingRateUnit = <Specified><br/>schedule.chargingSchedulePeriod[0].startPeriod = 0<br/>schedule.chargingSchedulePeriod[0].limit = 10

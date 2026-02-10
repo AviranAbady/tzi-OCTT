@@ -1,0 +1,62 @@
+sequenceDiagram
+    participant CS as Charging Station (OCTT)
+    participant CSMS as Charging Station Management System
+
+    Note over CS,CSMS: TC_E_53 - Reset Sequence Number - CSMS accepting seqNo = 0
+    Note over CS,CSMS: Use case: E01 | Requirement: E01.FR.07
+
+    Note over CS,CSMS: --- Transaction 1 (seqNo starts at 0) ---
+
+    Note over CS,CSMS: [Reusable State: EnergyTransferStarted]
+    CS->>CSMS: AuthorizeRequest [idToken]
+    CSMS-->>CS: AuthorizeResponse [idTokenInfo.status=Accepted]
+    CS->>CSMS: TransactionEventRequest [eventType=Started, triggerReason=Authorized, seqNo=0]
+    CSMS-->>CS: TransactionEventResponse [idTokenInfo.status=Accepted]
+    CS->>CSMS: StatusNotificationRequest [connectorStatus=Occupied]
+    CSMS-->>CS: StatusNotificationResponse
+    CS->>CSMS: NotifyEventRequest [trigger=Delta, actualValue=Occupied]
+    CSMS-->>CS: NotifyEventResponse
+    CS->>CSMS: TransactionEventRequest [eventType=Updated, triggerReason=CablePluggedIn, chargingState=EVConnected]
+    CSMS-->>CS: TransactionEventResponse
+    CS->>CSMS: TransactionEventRequest [eventType=Updated, triggerReason=ChargingStateChanged, chargingState=Charging]
+    CSMS-->>CS: TransactionEventResponse
+
+    Note over CS,CSMS: [Reusable State: EVDisconnected]
+    CS->>CSMS: TransactionEventRequest [eventType=Updated, triggerReason=StopAuthorized]
+    CSMS-->>CS: TransactionEventResponse
+    CS->>CSMS: TransactionEventRequest [eventType=Updated, triggerReason=ChargingStateChanged, chargingState=EVConnected]
+    CSMS-->>CS: TransactionEventResponse
+    CS->>CSMS: StatusNotificationRequest [connectorStatus=Available]
+    CSMS-->>CS: StatusNotificationResponse
+    CS->>CSMS: NotifyEventRequest [trigger=Delta, actualValue=Available]
+    CSMS-->>CS: NotifyEventResponse
+    CS->>CSMS: TransactionEventRequest [eventType=Ended, triggerReason=EVCommunicationLost, chargingState=Idle, stoppedReason=EVDisconnected]
+    CSMS-->>CS: TransactionEventResponse
+
+    Note over CS,CSMS: --- Transaction 2 (seqNo resets to 0) ---
+
+    Note over CS,CSMS: [Reusable State: EnergyTransferStarted]
+    CS->>CSMS: AuthorizeRequest [idToken]
+    CSMS-->>CS: AuthorizeResponse [idTokenInfo.status=Accepted]
+    CS->>CSMS: TransactionEventRequest [eventType=Started, triggerReason=Authorized, seqNo=0]
+    CSMS-->>CS: TransactionEventResponse [idTokenInfo.status=Accepted]
+    CS->>CSMS: StatusNotificationRequest [connectorStatus=Occupied]
+    CSMS-->>CS: StatusNotificationResponse
+    CS->>CSMS: NotifyEventRequest [trigger=Delta, actualValue=Occupied]
+    CSMS-->>CS: NotifyEventResponse
+    CS->>CSMS: TransactionEventRequest [eventType=Updated, triggerReason=CablePluggedIn, chargingState=EVConnected]
+    CSMS-->>CS: TransactionEventResponse
+    CS->>CSMS: TransactionEventRequest [eventType=Updated, triggerReason=ChargingStateChanged, chargingState=Charging]
+    CSMS-->>CS: TransactionEventResponse
+
+    Note over CS,CSMS: [Reusable State: EVDisconnected]
+    CS->>CSMS: TransactionEventRequest [eventType=Updated, triggerReason=StopAuthorized]
+    CSMS-->>CS: TransactionEventResponse
+    CS->>CSMS: TransactionEventRequest [eventType=Updated, triggerReason=ChargingStateChanged, chargingState=EVConnected]
+    CSMS-->>CS: TransactionEventResponse
+    CS->>CSMS: StatusNotificationRequest [connectorStatus=Available]
+    CSMS-->>CS: StatusNotificationResponse
+    CS->>CSMS: NotifyEventRequest [trigger=Delta, actualValue=Available]
+    CSMS-->>CS: NotifyEventResponse
+    CS->>CSMS: TransactionEventRequest [eventType=Ended, triggerReason=EVCommunicationLost, chargingState=Idle, stoppedReason=EVDisconnected]
+    CSMS-->>CS: TransactionEventResponse

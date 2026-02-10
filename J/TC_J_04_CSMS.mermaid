@@ -1,0 +1,21 @@
+sequenceDiagram
+    participant CS as Charging Station (OCTT)
+    participant CSMS as CSMS (System Under Test)
+
+    Note over CS,CSMS: Test Case: TC_J_04_CSMS
+    Note over CS,CSMS: Clock-aligned Meter Values - Signed
+    Note over CS,CSMS: Use case: J01 | Requirement: J01.FR.21
+    Note over CS,CSMS: Before: Reusable State EnergyTransferStarted
+
+    Note over CS,CSMS: 1. Execute Reusable State EVDisconnected
+
+    CS->>CSMS: StatusNotificationRequest [connectorStatus=Available]
+    CSMS-->>CS: StatusNotificationResponse
+
+    CS->>CSMS: NotifyEventRequest [trigger=Delta, actualValue=Available]
+    CSMS-->>CS: NotifyEventResponse
+
+    CS->>CSMS: TransactionEventRequest [eventType=Ended]
+    Note right of CS: Contains MeterValue field with timestamp interval at configured Tx-ended interval<br/>sampledValue.context = Sample.Clock<br/>AND last one has Transaction.End<br/>sampledValue.signedMeterValue present<br/>triggerReason = EVCommunicationLost<br/>stoppedReason = EVDisconnected
+
+    CSMS-->>CS: TransactionEventResponse

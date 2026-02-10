@@ -1,0 +1,11 @@
+sequenceDiagram
+    participant CS as Charging Station (OCTT)
+    participant CSMS as CSMS (System Under Test)
+
+    Note over CS,CSMS: Test Case: TC_F_27_CSMS
+    Note over CS,CSMS: Trigger message - NotImplemented
+
+    CSMS->>CS: 1. TriggerMessageRequest
+
+    CS-->>CSMS: 2. TriggerMessageResponse
+    Note right of CS: status = NotImplemented

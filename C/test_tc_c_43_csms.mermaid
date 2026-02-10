@@ -1,7 +1,8 @@
 sequenceDiagram
-    title OCPP 2.0.x TC_C_43_CSMS: Authorization by GroupId - Invalid status with Local Authorization List
     participant CS as Charging Station (OCTT)
     participant CSMS
+
+    Note over CS, CSMS: TC_C_43_CSMS - Authorization by GroupId - Invalid status with Local Authorization List
     
     Note over CS, CSMS: Prerequisite: Two valid idTokens with same GroupId are configured
     Note over CS, CSMS: Initial state: EVConnectedPreSession

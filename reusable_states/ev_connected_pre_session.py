@@ -48,16 +48,23 @@ Tool validations * Step 1:
 
 Post condition State is EVConnectedPreSession
 """
-from ocpp.v201.call import TransactionEvent, TransactionEventPayload
+from ocpp.v201.call import TransactionEvent
 from ocpp.v201.datatypes import EventDataType, ComponentType, VariableType
-from ocpp.v201.enums import ConnectorStatusType, EventTriggerType, EventNotificationType
+from ocpp.v201.enums import (
+    ConnectorStatusEnumType as ConnectorStatusType,
+    EventTriggerEnumType as EventTriggerType,
+    EventNotificationEnumType as EventNotificationType,
+)
 
-from mock_charge_point import MockChargePoint
+from tzi_charge_point import TziChargePoint
 from utils import now_iso, generate_transaction_id
 
 
-async def ev_connected_pre_session(cp: MockChargePoint, evse_id: int = 0, connector_id: int = 0):
-    response = await cp.send_status_notification(connector_id=connector_id, status=ConnectorStatusType.occupied)
+async def ev_connected_pre_session(cp: TziChargePoint, evse_id: int = 0, connector_id: int = 0, transaction_id: str = None):
+    if transaction_id is None:
+        transaction_id = generate_transaction_id()
+
+    response = await cp.send_status_notification(connector_id=connector_id, status=ConnectorStatusType.occupied, evse_id=evse_id)
 
     data = [
         EventDataType(
@@ -74,10 +81,10 @@ async def ev_connected_pre_session(cp: MockChargePoint, evse_id: int = 0, connec
     response = await cp.send_notify_event(data=data)
 
     event = TransactionEvent(trigger_reason='CablePluggedIn',
-                             transaction_info=dict(chargingState='EVConnected', transaction_id=generate_transaction_id()),
+                             transaction_info=dict(chargingState='EVConnected', transaction_id=transaction_id),
                              evse=dict(id=evse_id, connectorId=connector_id),
                              event_type=cp.get_notify_event_type(), timestamp=now_iso(), seq_no=cp.next_seq_no())
 
     response = await cp.send_transaction_event_request(event)
 
-
+    return transaction_id

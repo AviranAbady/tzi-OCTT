@@ -1,0 +1,21 @@
+sequenceDiagram
+    participant CS as Charging Station (OCTT)
+    participant CSMS as CSMS (System Under Test)
+
+    Note over CS,CSMS: Test Case: TC_K_05_CSMS
+    Note over CS,CSMS: Clear Charging Profile - With chargingProfileId
+
+    Note over CS,CSMS: Memory State
+
+    CSMS->>CS: GetChargingProfilesRequest
+    CS-->>CSMS: GetChargingProfilesResponse (status = Accepted)
+    CS->>CSMS: ReportChargingProfilesRequest
+    CSMS-->>CS: ReportChargingProfilesResponse
+
+    Note over CS,CSMS: Main
+
+    CSMS->>CS: 1. ClearChargingProfileRequest
+    Note left of CSMS: chargingProfileId = <Generated chargingProfileId><br/>chargingProfileCriteria = omit
+
+    CS-->>CSMS: 2. ClearChargingProfileResponse
+    Note right of CS: status = Accepted

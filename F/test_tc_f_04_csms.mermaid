@@ -1,0 +1,26 @@
+sequenceDiagram
+    participant CS as Charging Station (OCTT)
+    participant CSMS as CSMS (System Under Test)
+
+    Note over CS,CSMS: Test Case: TC_F_04_CSMS
+    Note over CS,CSMS: Remote start transaction - Remote start first<br/>Cable plugin timeout
+
+    Note over CSMS: Manual Action: Trigger the CSMS to request<br/>the Charging Station to start a transaction.
+
+    CSMS->>CS: 1. RequestStartTransactionRequest
+    Note left of CSMS: idToken.idToken = <Configured valid_idtoken_idtoken><br/>idToken.type = <Configured valid_idtoken_type>
+
+    CS-->>CSMS: 2. RequestStartTransactionResponse
+    Note right of CS: status = Accepted<br/>transactionId is omitted
+
+    CS->>CSMS: 3. TransactionEventRequest
+    Note right of CS: triggerReason = RemoteStart<br/>transactionInfo.remoteStartId = <By OCTT generated remoteStartID><br/>eventType = Started
+
+    CSMS-->>CS: 4. TransactionEventResponse
+
+    Note over CS,CSMS: Wait for <Configured Transaction Duration>
+
+    CS->>CSMS: 5. TransactionEventRequest
+    Note right of CS: triggerReason = EVConnectTimeout<br/>eventType = Updated
+
+    CSMS-->>CS: 6. TransactionEventResponse

@@ -24,20 +24,20 @@ Post condition State is StopAuthorized
 """
 
 from ocpp.v201.enums import (
-    TransactionEventType,
-    TriggerReasonType,
-    AuthorizationStatusType,
-    ChargingStateType
+    TransactionEventEnumType as TransactionEventType,
+    TriggerReasonEnumType as TriggerReasonType,
+    AuthorizationStatusEnumType as AuthorizationStatusType,
+    ChargingStateEnumType as ChargingStateType,
 )
 from ocpp.v201.call import TransactionEvent
 
-from mock_charge_point import MockChargePoint
+from tzi_charge_point import TziChargePoint
 from utils import now_iso
 
 
-async def stop_authorized(cp: MockChargePoint, evse_id: int = 1, connector_id: int = 1, 
-                         transaction_id: str = "transaction_id", id_token_id: str = None, 
-                         id_token_type: str = None):
+async def stop_authorized(cp: TziChargePoint, evse_id: int = 1, connector_id: int = 1,
+                          transaction_id: str = "transaction_id", id_token_id: str = None,
+                          id_token_type: str = None):
     
     # Create and send the transaction event
     transaction_event = TransactionEvent(

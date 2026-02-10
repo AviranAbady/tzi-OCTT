@@ -1,0 +1,14 @@
+sequenceDiagram
+    participant CS as Charging Station (OCTT)
+    participant CSMS as CSMS (System Under Test)
+
+    Note over CS,CSMS: Test Case: TC_O_01_CSMS
+    Note over CS,CSMS: Set Display Message - Success
+
+    Note over CS,CSMS: Manual Action: Request the CSMS to send a SetDisplayMessageRequest
+
+    CSMS->>CS: 1. SetDisplayMessageRequest
+    Note left of CSMS: message.id = <Generated Id><br/>message.priority = <Configured Priority><br/>message.message.format = <Configured Format><br/>message.state = <Configured State><br/>message.transactionId = <Omitted> (O01.FR.04)
+
+    CS-->>CSMS: 2. SetDisplayMessageResponse
+    Note right of CS: status = Accepted

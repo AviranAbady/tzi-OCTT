@@ -1,0 +1,14 @@
+sequenceDiagram
+    participant CS as Charging Station (OCTT)
+    participant CSMS as CSMS (System Under Test)
+
+    Note over CS,CSMS: Test Case: TC_M_16_CSMS
+    Note over CS,CSMS: Retrieve certificates - MORootCertificate
+
+    Note over CS,CSMS: Reusable State: GetInstalledCertificates (MORootCertificate)
+
+    CSMS->>CS: 1. GetInstalledCertificateIdsRequest
+    Note left of CSMS: certificateType = [MORootCertificate]
+
+    CS-->>CSMS: 2. GetInstalledCertificateIdsResponse
+    Note right of CS: status = Accepted<br/>certificateHashDataChain[0].certificateType = MORootCertificate

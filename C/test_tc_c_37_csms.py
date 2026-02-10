@@ -21,19 +21,24 @@ Before (Preparations)
 Test scenario
 1. The CSMS sends a ClearCacheRequest
 2. The OCTT responds with a ClearCacheResponse with status Accepted
+
+Configuration
+    The CSMS must be triggered externally (e.g., via CSMS admin API or UI) to send ClearCacheRequest
+    to the connected Charging Station within CSMS_ACTION_TIMEOUT seconds.
+    The MockChargePoint is pre-configured to respond with Accepted status (default).
 """
 
 import asyncio
 import pytest
 import os
 
-from ocpp.v201 import call
-from ocpp.v201.enums import ClearCacheStatusType
-from mock_charge_point import MockChargePoint
-from utils import get_basic_auth_headers, validate_schema
+from ocpp.v201.enums import ClearCacheStatusEnumType as ClearCacheStatusType
+from tzi_charge_point import TziChargePoint
+from utils import get_basic_auth_headers
 
 BASIC_AUTH_CP = os.environ['BASIC_AUTH_CP']
 BASIC_AUTH_CP_PASSWORD = os.environ['BASIC_AUTH_CP_PASSWORD']
+CSMS_ACTION_TIMEOUT = int(os.environ.get('CSMS_ACTION_TIMEOUT', 30))
 
 
 @pytest.mark.asyncio
@@ -41,15 +46,14 @@ BASIC_AUTH_CP_PASSWORD = os.environ['BASIC_AUTH_CP_PASSWORD']
                          indirect=True)
 async def test_tc_c_37(connection):
     assert connection.open
-    cp = MockChargePoint(BASIC_AUTH_CP, connection)
+    cp = TziChargePoint(BASIC_AUTH_CP, connection)
 
+    # Default _clear_cache_response_status is ClearCacheStatusType.accepted
     start_task = asyncio.create_task(cp.start())
 
-    request = call.ClearCache()
-    response = await cp.send_clear_cache_request(request)
+    # Wait for the CSMS to send a ClearCacheRequest (triggered externally by CSMS operator/admin)
+    await asyncio.wait_for(cp._received_clear_cache.wait(), timeout=CSMS_ACTION_TIMEOUT)
 
-    assert response is not None
-    assert validate_schema(data=response, schema_file_name='../schema/ClearCacheResponse.json')
-    assert response.status == ClearCacheStatusType.accepted
+    assert cp._received_clear_cache.is_set(), "CSMS did not send ClearCacheRequest within timeout"
 
     start_task.cancel()

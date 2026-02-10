@@ -1,0 +1,18 @@
+sequenceDiagram
+    participant CS as Charging Station (OCTT)
+    participant CSMS as Charging Station Management System
+
+    Note over CS,CSMS: TC_E_38 - Local start transaction - EV not ready
+    Note over CS,CSMS: Use case: E03
+    Note over CS,CSMS: Before: Reusable State Authorized
+
+    Note over CS,CSMS: [Reusable State: EVConnectedPreSession]
+    CS->>CSMS: StatusNotificationRequest [connectorStatus=Occupied]
+    CSMS-->>CS: StatusNotificationResponse
+    CS->>CSMS: NotifyEventRequest [trigger=Delta, actualValue=Occupied]
+    CSMS-->>CS: NotifyEventResponse
+    CS->>CSMS: TransactionEventRequest [eventType=Updated, triggerReason=CablePluggedIn, chargingState=EVConnected]
+    CSMS-->>CS: TransactionEventResponse
+
+    CS->>CSMS: TransactionEventRequest [eventType=Updated, triggerReason=ChargingStateChanged, chargingState=SuspendedEV]
+    CSMS-->>CS: TransactionEventResponse

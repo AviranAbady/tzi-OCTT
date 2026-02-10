@@ -1,0 +1,14 @@
+sequenceDiagram
+    participant CS as Charging Station (OCTT)
+    participant CSMS as CSMS (System Under Test)
+
+    Note over CS,CSMS: Test Case: TC_O_13_CSMS
+    Note over CS,CSMS: Set Display Message - Display message at StartTime
+
+    Note over CS,CSMS: Manual Action: Request the CSMS to send a SetDisplayMessageRequest with a startTime
+
+    CSMS->>CS: 1. SetDisplayMessageRequest
+    Note left of CSMS: message.id = <Generated Id><br/>message.startDateTime = <Configured startDateTime>
+
+    CS-->>CSMS: 2. SetDisplayMessageResponse
+    Note right of CS: status = Accepted

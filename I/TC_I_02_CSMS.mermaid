@@ -1,0 +1,41 @@
+sequenceDiagram
+    participant CS as Charging Station (OCTT)
+    participant CSMS as CSMS (System Under Test)
+
+    Note over CS,CSMS: Test Case: TC_I_02_CSMS
+    Note over CS,CSMS: Show EV Driver Final Total Cost After Charging
+    Note over CS,CSMS: Memory State: CSMS tariff configured based on energy consumed
+
+    Note over CS,CSMS: [Reusable State: EVConnectedPreSession]
+    CS->>CSMS: StatusNotificationRequest [connectorStatus=Occupied]
+    CSMS-->>CS: StatusNotificationResponse
+    CS->>CSMS: NotifyEventRequest [trigger=Delta, actualValue=Occupied, component.name=Connector, variable.name=AvailabilityState]
+    CSMS-->>CS: NotifyEventResponse
+    CS->>CSMS: TransactionEventRequest [eventType=Updated, triggerReason=CablePluggedIn, chargingState=EVConnected, meterValue=1000, context=Transaction.Begin]
+    CSMS-->>CS: TransactionEventResponse
+
+    Note over CS,CSMS: [Reusable State: Authorized]
+    CS->>CSMS: AuthorizeRequest [idToken.idToken=<valid>, idToken.type=<valid>]
+    CSMS-->>CS: AuthorizeResponse [idTokenInfo.status=Accepted]
+    CS->>CSMS: TransactionEventRequest [eventType=Updated, triggerReason=Authorized]
+    CSMS-->>CS: TransactionEventResponse [idTokenInfo.status=Accepted]
+
+    Note over CS,CSMS: [Reusable State: EnergyTransferStarted]
+    CS->>CSMS: TransactionEventRequest [eventType=Updated, triggerReason=ChargingStateChanged, chargingState=Charging]
+    CSMS-->>CS: TransactionEventResponse
+
+    Note over CS,CSMS: [Reusable State: StopAuthorized]
+    CS->>CSMS: TransactionEventRequest [eventType=Updated, triggerReason=StopAuthorized]
+    CSMS-->>CS: TransactionEventResponse
+
+    Note over CS,CSMS: [Reusable State: EVConnectedPostSession]
+    CS->>CSMS: TransactionEventRequest [eventType=Updated, triggerReason=ChargingStateChanged, chargingState=EVConnected]
+    CSMS-->>CS: TransactionEventResponse
+
+    CS->>CSMS: StatusNotificationRequest [connectorStatus=Available]
+    CSMS-->>CS: StatusNotificationResponse
+    CS->>CSMS: NotifyEventRequest [trigger=Delta, actualValue=Available, component.name=Connector, variable.name=AvailabilityState]
+    CSMS-->>CS: NotifyEventResponse
+
+    CS->>CSMS: TransactionEventRequest [eventType=Ended, triggerReason=EVCommunicationLost, chargingState=Idle, stoppedReason=EVDisconnected, meterValue=6000, context=Transaction.End]
+    CSMS-->>CS: TransactionEventResponse [totalCost must NOT be omitted]

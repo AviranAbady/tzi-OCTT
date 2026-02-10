@@ -1,0 +1,14 @@
+sequenceDiagram
+    participant CS as Charging Station (OCTT)
+    participant CSMS as CSMS (System Under Test)
+
+    Note over CS,CSMS: Test Case: TC_A_11_CSMS
+    Note over CS,CSMS: Update CS Certificate - Success - Charging Station Certificate
+    Note over CS,CSMS: Prerequisite: CSMS supports security profile 3
+
+    Note over CS,CSMS: 1. Execute Reusable State RenewChargingStationCertificate
+
+    CS->>CSMS: 2. Disconnect current connection
+    CS->>CSMS: 2. Reconnect using renewed charging station certificate
+
+    CSMS-->>CS: 3. Accept incoming connection request with renewed certificate

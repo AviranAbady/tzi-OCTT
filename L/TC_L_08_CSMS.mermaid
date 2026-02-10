@@ -1,0 +1,37 @@
+sequenceDiagram
+    participant CS as Charging Station (OCTT)
+    participant CSMS as CSMS (System Under Test)
+
+    Note over CS,CSMS: Test Case: TC_L_08_CSMS
+    Note over CS,CSMS: Secure Firmware Update - InstallVerificationFailed
+
+    CSMS->>CS: 1. UpdateFirmwareRequest
+    Note left of CSMS: requestId<br/>firmware.location<br/>firmware.retrieveDateTime<br/>firmware.signingCertificate<br/>firmware.signature
+
+    CS-->>CSMS: 2. UpdateFirmwareResponse
+    Note right of CS: status = Accepted
+
+    CS->>CSMS: 3. FirmwareStatusNotificationRequest
+    Note right of CS: status = Downloading
+
+    CSMS-->>CS: 4. FirmwareStatusNotificationResponse
+
+    CS->>CSMS: 5. FirmwareStatusNotificationRequest
+    Note right of CS: status = Downloaded
+
+    CSMS-->>CS: 6. FirmwareStatusNotificationResponse
+
+    CS->>CSMS: 7. FirmwareStatusNotificationRequest
+    Note right of CS: status = SignatureVerified
+
+    CSMS-->>CS: 8. FirmwareStatusNotificationResponse
+
+    CS->>CSMS: 9. FirmwareStatusNotificationRequest
+    Note right of CS: status = Installing
+
+    CSMS-->>CS: 10. FirmwareStatusNotificationResponse
+
+    CS->>CSMS: 11. FirmwareStatusNotificationRequest
+    Note right of CS: status = InstallVerificationFailed
+
+    CSMS-->>CS: 12. FirmwareStatusNotificationResponse

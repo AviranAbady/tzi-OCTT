@@ -1,0 +1,11 @@
+sequenceDiagram
+    participant CS as Charging Station (OCTT)
+    participant CSMS as CSMS (System Under Test)
+
+    Note over CS,CSMS: Test Case: TC_N_50_CSMS
+    Note over CS,CSMS: Alert Event - Periodic Triggered
+
+    CS->>CSMS: 1. NotifyEventRequest
+    Note right of CS: trigger = Periodic<br/>actualValue = "42"<br/>eventNotificationType = HardWiredMonitor<br/>component.name = EVSE<br/>variable.name = AvailabilityState
+
+    CSMS-->>CS: 2. NotifyEventResponse

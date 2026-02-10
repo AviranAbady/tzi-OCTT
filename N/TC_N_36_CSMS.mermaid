@@ -1,0 +1,38 @@
+sequenceDiagram
+    participant CS as Charging Station (OCTT)
+    participant CSMS as CSMS (System Under Test)
+
+    Note over CS,CSMS: Test Case: TC_N_36_CSMS
+    Note over CS,CSMS: Retrieve Log Information - Second Request
+
+    CSMS->>CS: 1. GetLogRequest
+    Note left of CSMS: logType<br/>log.remoteLocation<br/>requestId = id1
+
+    CS-->>CSMS: 2. GetLogResponse
+    Note right of CS: status = Accepted
+
+    CS->>CSMS: 3. LogStatusNotificationRequest
+    Note right of CS: status = Uploading<br/>requestId = id1
+
+    CSMS-->>CS: 4. LogStatusNotificationResponse
+
+    CSMS->>CS: 5. GetLogRequest
+    Note left of CSMS: logType<br/>log.remoteLocation<br/>requestId = id2
+
+    CS-->>CSMS: 6. GetLogResponse
+    Note right of CS: status = AcceptedCanceled
+
+    CS->>CSMS: 7. LogStatusNotificationRequest
+    Note right of CS: status = AcceptedCanceled<br/>requestId = id1
+
+    CSMS-->>CS: 8. LogStatusNotificationResponse
+
+    CS->>CSMS: 9. LogStatusNotificationRequest
+    Note right of CS: status = Uploading<br/>requestId = id2
+
+    CSMS-->>CS: 10. LogStatusNotificationResponse
+
+    CS->>CSMS: 11. LogStatusNotificationRequest
+    Note right of CS: status = Uploaded<br/>requestId = id2
+
+    CSMS-->>CS: 12. LogStatusNotificationResponse

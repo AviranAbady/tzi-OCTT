@@ -1,0 +1,19 @@
+sequenceDiagram
+    participant CS as Charging Station (OCTT)
+    participant CSMS as CSMS (System Under Test)
+
+    Note over CS,CSMS: Test Case: TC_F_13_CSMS
+    Note over CS,CSMS: Trigger message - TransactionEvent - Specific EVSE
+
+    Note over CS,CSMS: Reusable State: EnergyTransferStarted
+
+    CSMS->>CS: 1. TriggerMessageRequest
+    Note left of CSMS: requestedMessage = TransactionEvent<br/>evse.id = <Configured evseId>
+
+    CS-->>CSMS: 2. TriggerMessageResponse
+    Note right of CS: status = Accepted
+
+    CS->>CSMS: 3. TransactionEventRequest
+    Note right of CS: evse.id = <Configured evseId><br/>triggerReason = Trigger<br/>transactionInfo.chargingState = Charging<br/>meterValue is present<br/>meterValue[0].sampledValue.context = Trigger
+
+    CSMS-->>CS: 4. TransactionEventResponse

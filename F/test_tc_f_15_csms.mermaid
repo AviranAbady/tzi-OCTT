@@ -1,0 +1,17 @@
+sequenceDiagram
+    participant CS as Charging Station (OCTT)
+    participant CSMS as CSMS (System Under Test)
+
+    Note over CS,CSMS: Test Case: TC_F_15_CSMS
+    Note over CS,CSMS: Trigger message - LogStatusNotification - Idle
+
+    CSMS->>CS: 1. TriggerMessageRequest
+    Note left of CSMS: requestedMessage = LogStatusNotification
+
+    CS-->>CSMS: 2. TriggerMessageResponse
+    Note right of CS: status = Accepted
+
+    CS->>CSMS: 3. LogStatusNotificationRequest
+    Note right of CS: status = Idle
+
+    CSMS-->>CS: 4. LogStatusNotificationResponse

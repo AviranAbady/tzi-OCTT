@@ -1,0 +1,133 @@
+"""
+TC_K_06 - Clear Charging Profile - With stackLevel/purpose combination for one profile
+Use case: K10 | Requirements: K10.FR.02
+K10.FR.02: The CSMS SHALL either specify a chargingProfile.id OR include one or more of the fields stackLevel, evseId and chargingProfilePurpose in the ClearChargingProfileRequest to specify which Charging Profiles need to be cleared.
+System under test: CSMS
+
+Description:
+    If the CSMS wishes to clear some or all of the charging profiles that were previously sent to the
+    Charging Station, then the CSMS sends a ClearChargingProfileRequest to the Charging Station.
+
+Purpose:
+    To verify if the CSMS is able to request the charging station to clear a specific charging profile with a
+    stackLevel/purpose combination for a chargingProfileId as described at the OCPP specification.
+
+Main:
+    1. The CSMS sends a ClearChargingProfileRequest with
+       chargingProfilePurpose TxDefaultProfile AND evseId <Configured evseId> AND
+       stackLevel <Configured stackLevel>
+    2. The OCTT responds with a ClearChargingProfileResponse with status Accepted
+
+Tool validations:
+    * Step 1: Message ClearChargingProfileRequest
+      - chargingProfileCriteria.chargingProfilePurpose TxDefaultProfile AND
+      - chargingProfileCriteria.stackLevel <Configured stackLevel> AND
+      - chargingProfileCriteria.evseId <Configured evseId>
+"""
+import asyncio
+import logging
+import os
+import sys
+import time
+
+import pytest
+import websockets
+
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+from ocpp.routing import on
+from ocpp.v201 import call, call_result
+from ocpp.v201.enums import (
+    Action,
+    RegistrationStatusEnumType,
+    ConnectorStatusEnumType,
+    ClearChargingProfileStatusEnumType,
+    ChargingProfilePurposeEnumType,
+)
+
+from tzi_charge_point import TziChargePoint
+from utils import get_basic_auth_headers, now_iso
+
+logging.basicConfig(level=logging.INFO)
+
+CSMS_ADDRESS = os.environ.get('CSMS_ADDRESS', 'ws://localhost:9000')
+BASIC_AUTH_CP = os.environ.get('BASIC_AUTH_CP', 'CP_1')
+BASIC_AUTH_CP_PASSWORD = os.environ.get('BASIC_AUTH_CP_PASSWORD', '0123456789123456')
+EVSE_ID = int(os.environ.get('CONFIGURED_EVSE_ID', '1'))
+CONNECTOR_ID = int(os.environ.get('CONFIGURED_CONNECTOR_ID', '1'))
+CSMS_ACTION_TIMEOUT = int(os.environ.get('CSMS_ACTION_TIMEOUT', '30'))
+
+
+class SmartChargingMockCP(TziChargePoint):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._received_clear_charging_profile = asyncio.Event()
+        self._clear_charging_profile_data = None
+
+    @on(Action.clear_charging_profile)
+    async def on_clear_charging_profile(self, charging_profile_id=None, charging_profile_criteria=None, **kwargs):
+        logging.info(f"Received ClearChargingProfileRequest: id={charging_profile_id}, criteria={charging_profile_criteria}")
+        self._clear_charging_profile_data = {
+            'charging_profile_id': charging_profile_id,
+            'charging_profile_criteria': charging_profile_criteria,
+        }
+        self._received_clear_charging_profile.set()
+        return call_result.ClearChargingProfile(
+            status=ClearChargingProfileStatusEnumType.accepted
+        )
+
+
+@pytest.mark.asyncio
+async def test_tc_k_06():
+    """Clear Charging Profile - With stackLevel/purpose combination."""
+    cp_id = BASIC_AUTH_CP
+    uri = f'{CSMS_ADDRESS}/{cp_id}'
+    headers = get_basic_auth_headers(cp_id, BASIC_AUTH_CP_PASSWORD)
+
+    ws = await websockets.connect(
+        uri=uri,
+        subprotocols=['ocpp2.0.1'],
+        extra_headers=headers,
+    )
+    time.sleep(0.5)
+
+    cp = SmartChargingMockCP(cp_id, ws)
+    start_task = asyncio.create_task(cp.start())
+
+    boot_response = await cp.send_boot_notification()
+    assert boot_response.status == RegistrationStatusEnumType.accepted
+
+    await cp.send_status_notification(CONNECTOR_ID, ConnectorStatusEnumType.available)
+
+    # Wait for CSMS to send ClearChargingProfileRequest
+    await asyncio.wait_for(
+        cp._received_clear_charging_profile.wait(),
+        timeout=CSMS_ACTION_TIMEOUT,
+    )
+
+    assert cp._clear_charging_profile_data is not None
+    req_data = cp._clear_charging_profile_data
+    criteria = req_data['charging_profile_criteria']
+
+    assert criteria is not None, "chargingProfileCriteria must be present"
+
+    # chargingProfileId must be omitted
+    assert req_data['charging_profile_id'] is None, \
+        f"Expected chargingProfileId to be omitted, got {req_data['charging_profile_id']}"
+
+    # chargingProfilePurpose must be TxDefaultProfile
+    purpose = criteria.get('charging_profile_purpose') or criteria.get('chargingProfilePurpose')
+    assert purpose in ('TxDefaultProfile', ChargingProfilePurposeEnumType.tx_default_profile), \
+        f"Expected purpose=TxDefaultProfile, got {purpose}"
+
+    # stackLevel must be present
+    stack_level = criteria.get('stack_level') or criteria.get('stackLevel')
+    assert stack_level is not None, "stackLevel must be present"
+
+    # evseId must be configured evseId
+    evse_id = criteria.get('evse_id') or criteria.get('evseId')
+    assert evse_id == EVSE_ID, f"Expected evseId={EVSE_ID}, got {evse_id}"
+
+    logging.info("TC_K_06 completed successfully")
+    start_task.cancel()
+    await ws.close()

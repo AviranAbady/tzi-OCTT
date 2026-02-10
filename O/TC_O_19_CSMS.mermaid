@@ -1,0 +1,12 @@
+sequenceDiagram
+    participant CS as Charging Station (OCTT)
+    participant CSMS as CSMS (System Under Test)
+
+    Note over CS,CSMS: Test Case: TC_O_19_CSMS
+    Note over CS,CSMS: Set Display Message - NotSupportedMessageFormat
+
+    CSMS->>CS: 1. SetDisplayMessageRequest
+    Note left of CSMS: message.id = <Generated Id>
+
+    CS-->>CSMS: 2. SetDisplayMessageResponse
+    Note right of CS: status = NotSupportedMessageFormat

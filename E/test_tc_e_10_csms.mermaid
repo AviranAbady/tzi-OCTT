@@ -1,0 +1,12 @@
+sequenceDiagram
+    participant CS as Charging Station (OCTT)
+    participant CSMS as Charging Station Management System
+
+    Note over CS,CSMS: TC_E_10 - Start transaction options - Authorized - Local
+    Note over CS,CSMS: Use case: E01(S3) | Requirement: E01.FR.03
+
+    CS->>CSMS: AuthorizeRequest [idToken.idToken=<valid_idtoken>, idToken.type=<valid_type>]
+    CSMS-->>CS: AuthorizeResponse [idTokenInfo.status=Accepted]
+
+    CS->>CSMS: TransactionEventRequest [eventType=Started, triggerReason=Authorized, idToken]
+    CSMS-->>CS: TransactionEventResponse [idTokenInfo.status=Accepted]

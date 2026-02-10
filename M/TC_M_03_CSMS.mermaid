@@ -1,0 +1,14 @@
+sequenceDiagram
+    participant CS as Charging Station (OCTT)
+    participant CSMS as CSMS (System Under Test)
+
+    Note over CS,CSMS: Test Case: TC_M_03_CSMS
+    Note over CS,CSMS: Install CA certificate - V2GRootCertificate
+
+    Note over CS,CSMS: Reusable State: CertificateInstalled (V2GRootCertificate)
+
+    CSMS->>CS: 1. InstallCertificateRequest
+    Note left of CSMS: certificateType = V2GRootCertificate<br/>certificate = <configured certificate>
+
+    CS-->>CSMS: 2. InstallCertificateResponse
+    Note right of CS: status = Accepted

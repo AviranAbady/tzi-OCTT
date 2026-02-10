@@ -1,0 +1,18 @@
+sequenceDiagram
+    participant CS as Charging Station (OCTT)
+    participant CSMS as CSMS (System Under Test)
+
+    Note over CS,CSMS: Test Case: TC_K_04_CSMS
+    Note over CS,CSMS: Replace charging profile - With chargingProfileId
+
+    CSMS->>CS: 1. SetChargingProfileRequest
+    Note left of CSMS: chargingSchedulePeriod.limit = 8.0 or 8000.0
+
+    CS-->>CSMS: 2. SetChargingProfileResponse
+    Note right of CS: status = Accepted
+
+    CSMS->>CS: 3. SetChargingProfileRequest
+    Note left of CSMS: chargingProfile.id = <same id for both><br/>chargingSchedulePeriod.limit = 6.0 or 6000.0
+
+    CS-->>CSMS: 4. SetChargingProfileResponse
+    Note right of CS: status = Accepted

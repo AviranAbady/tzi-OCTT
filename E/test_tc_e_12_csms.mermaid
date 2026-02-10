@@ -1,0 +1,9 @@
+sequenceDiagram
+    participant CS as Charging Station (OCTT)
+    participant CSMS as Charging Station Management System
+
+    Note over CS,CSMS: TC_E_12 - Start transaction options - ParkingBayOccupied
+    Note over CS,CSMS: Use case: E01(S1) | Requirement: E01.FR.01
+
+    CS->>CSMS: TransactionEventRequest [eventType=Started, triggerReason=EVDetected]
+    CSMS-->>CS: TransactionEventResponse

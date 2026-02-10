@@ -1,0 +1,215 @@
+"""
+TC_L_11 - Secure Firmware Update - Unable to cancel
+Use case: L01 | Requirements: L01.FR.01, L01.FR.11, L01.FR.27
+L01.FR.01: Whenever the Charging Station enters a new state in the firmware update process, the Charging Station SHALL send a FirmwareStatusNotificationRequest message to the CSMS with this new status.
+    Precondition: Whenever the Charging Station enters a new state in the firmware update process.
+L01.FR.11: For security purposes the CSMS SHALL include the Firmware Signing certificate in the UpdateFirmwareRequest.
+L01.FR.27: L01.FR.24 AND the Charging Station is unable to cancel the firmware installation. The Charging Station MAY respond with status = Rejected.
+    Precondition: L01.FR.24 AND the Charging Station is unable to cancel the firmware installation
+System under test: CSMS
+
+Description:
+    This test case covers the scenario where a firmware update is already in progress (downloading),
+    and the CSMS sends a second UpdateFirmwareRequest. The Charging Station is unable to cancel the
+    first update and rejects the second. The first update continues through to successful installation.
+
+Purpose:
+    To verify if the CSMS correctly handles a Rejected response when trying to send a new firmware
+    update while one is already in progress and cannot be canceled.
+
+Main:
+    1. CSMS sends first UpdateFirmwareRequest
+    2. CS responds Accepted, starts Downloading
+    3. CSMS sends second UpdateFirmwareRequest
+    4. CS responds Rejected (cannot cancel first)
+    5. First update continues: Downloaded -> SignatureVerified -> Installing ->
+       InstallRebooting -> Boot(FirmwareUpdate) -> Status -> Installed
+
+Tool validations:
+    * Step 16: BootNotificationResponse
+      - status = Accepted
+
+Configuration:
+    CSMS_ADDRESS              - WebSocket URL of the CSMS
+    BASIC_AUTH_CP             - Charge Point identifier
+    BASIC_AUTH_CP_PASSWORD    - Charge Point password
+    CONFIGURED_EVSE_ID        - EVSE id (default 1)
+    CONFIGURED_CONNECTOR_ID   - Connector id (default 1)
+    CSMS_ACTION_TIMEOUT       - Seconds to wait for CSMS action (default 30)
+"""
+import asyncio
+import logging
+import os
+import sys
+import time
+
+import pytest
+import websockets
+
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+from ocpp.routing import on
+from ocpp.v201 import call_result
+from ocpp.v201.enums import (
+    Action,
+    RegistrationStatusEnumType,
+    ConnectorStatusEnumType,
+    FirmwareStatusEnumType,
+    UpdateFirmwareStatusEnumType,
+    EventTriggerEnumType,
+    EventNotificationEnumType,
+)
+from ocpp.v201.datatypes import EventDataType, ComponentType, VariableType
+
+from tzi_charge_point import TziChargePoint
+from utils import get_basic_auth_headers, now_iso
+
+logging.basicConfig(level=logging.INFO)
+
+CSMS_ADDRESS = os.environ.get('CSMS_ADDRESS', 'ws://localhost:9000')
+BASIC_AUTH_CP = os.environ.get('BASIC_AUTH_CP', 'CP_1')
+BASIC_AUTH_CP_PASSWORD = os.environ.get('BASIC_AUTH_CP_PASSWORD', '0123456789123456')
+EVSE_ID = int(os.environ.get('CONFIGURED_EVSE_ID', '1'))
+CONNECTOR_ID = int(os.environ.get('CONFIGURED_CONNECTOR_ID', '1'))
+CSMS_ACTION_TIMEOUT = int(os.environ.get('CSMS_ACTION_TIMEOUT', '30'))
+
+
+class FirmwareRejectMockCP(TziChargePoint):
+    """MockChargePoint that tracks multiple UpdateFirmwareRequests and rejects the second."""
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._update_firmware_count = 0
+        self._received_second_update_firmware = asyncio.Event()
+        self._second_update_firmware_data = None
+
+    @on(Action.update_firmware)
+    async def on_update_firmware(self, request_id, firmware, retries=None, retry_interval=None, **kwargs):
+        self._update_firmware_count += 1
+        logging.info(f"Received UpdateFirmwareRequest #{self._update_firmware_count}: request_id={request_id}")
+
+        if self._update_firmware_count == 1:
+            # First request - accept it
+            self._update_firmware_data = {
+                'request_id': request_id,
+                'firmware': firmware,
+                'retries': retries,
+                'retry_interval': retry_interval,
+            }
+            self._received_update_firmware.set()
+            return call_result.UpdateFirmware(
+                status=UpdateFirmwareStatusEnumType.accepted
+            )
+        else:
+            # Second request - reject it (cannot cancel first)
+            self._second_update_firmware_data = {
+                'request_id': request_id,
+                'firmware': firmware,
+                'retries': retries,
+                'retry_interval': retry_interval,
+            }
+            self._received_second_update_firmware.set()
+            return call_result.UpdateFirmware(
+                status=UpdateFirmwareStatusEnumType.rejected
+            )
+
+
+@pytest.mark.asyncio
+async def test_tc_l_11():
+    """Secure Firmware Update - Unable to cancel."""
+    cp_id = BASIC_AUTH_CP
+    uri = f'{CSMS_ADDRESS}/{cp_id}'
+    headers = get_basic_auth_headers(cp_id, BASIC_AUTH_CP_PASSWORD)
+
+    ws = await websockets.connect(
+        uri=uri,
+        subprotocols=['ocpp2.0.1'],
+        extra_headers=headers,
+    )
+    time.sleep(0.5)
+
+    cp = FirmwareRejectMockCP(cp_id, ws)
+    start_task = asyncio.create_task(cp.start())
+
+    # Boot and establish session
+    boot_response = await cp.send_boot_notification()
+    assert boot_response.status == RegistrationStatusEnumType.accepted
+
+    await cp.send_status_notification(CONNECTOR_ID, ConnectorStatusEnumType.available)
+
+    # Step 1-2: Wait for first UpdateFirmwareRequest
+    await asyncio.wait_for(
+        cp._received_update_firmware.wait(),
+        timeout=CSMS_ACTION_TIMEOUT,
+    )
+    assert cp._update_firmware_data is not None
+
+    # Step 3: First firmware starts downloading
+    resp = await cp.send_firmware_status_notification_request(
+        FirmwareStatusEnumType.downloading
+    )
+    assert resp is not None
+
+    # Step 5-6: Wait for second UpdateFirmwareRequest
+    await asyncio.wait_for(
+        cp._received_second_update_firmware.wait(),
+        timeout=CSMS_ACTION_TIMEOUT,
+    )
+    assert cp._second_update_firmware_data is not None
+
+    # CS responded with Rejected (cannot cancel first)
+
+    # First update continues: Downloaded
+    resp = await cp.send_firmware_status_notification_request(
+        FirmwareStatusEnumType.downloaded
+    )
+    assert resp is not None
+
+    # SignatureVerified
+    resp = await cp.send_firmware_status_notification_request(
+        FirmwareStatusEnumType.signature_verified
+    )
+    assert resp is not None
+
+    # Installing
+    resp = await cp.send_firmware_status_notification_request(
+        FirmwareStatusEnumType.installing
+    )
+    assert resp is not None
+
+    # InstallRebooting
+    resp = await cp.send_firmware_status_notification_request(
+        FirmwareStatusEnumType.install_rebooting
+    )
+    assert resp is not None
+
+    # BootNotification with FirmwareUpdate reason
+    boot_response = await cp.send_boot_notification_with_reason('FirmwareUpdate')
+    assert boot_response.status == RegistrationStatusEnumType.accepted, \
+        f"Expected BootNotificationResponse status=Accepted, got {boot_response.status}"
+
+    # StatusNotification - Available + NotifyEvent
+    await cp.send_status_notification(CONNECTOR_ID, ConnectorStatusEnumType.available)
+
+    event_data = [
+        EventDataType(
+            trigger=EventTriggerEnumType.delta,
+            actual_value='Available',
+            component=ComponentType(name='Connector', evse={"id": EVSE_ID}),
+            variable=VariableType(name='AvailabilityState'),
+            timestamp=now_iso(),
+            event_id=EVSE_ID,
+            event_notification_type=EventNotificationEnumType.custom_monitor,
+        )
+    ]
+    await cp.send_notify_event(data=event_data)
+
+    # FirmwareStatusNotification - Installed
+    resp = await cp.send_firmware_status_notification_request(
+        FirmwareStatusEnumType.installed
+    )
+    assert resp is not None
+
+    logging.info("TC_L_11 completed successfully")
+    start_task.cancel()
+    await ws.close()

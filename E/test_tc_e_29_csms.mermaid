@@ -1,0 +1,17 @@
+sequenceDiagram
+    participant CS as Charging Station (OCTT)
+    participant CSMS as CSMS (System Under Test)
+
+    Note over CS,CSMS: TC_E_29 - Check Transaction status - ongoing - with message in queue
+    Note over CS,CSMS: Use case: E14 | Requirements: E14.FR.02, E14.FR.04
+    Note over CS,CSMS: Before: Reusable State EnergyTransferStarted
+
+    CS->>CS: Close WebSocket connection
+    Note over CS,CSMS: Wait <TRANSACTION_DURATION> seconds then reconnect
+    CS->>CSMS: WebSocket reconnect
+
+    CSMS->>CS: GetTransactionStatusRequest [transactionId=<generated transactionId>]
+    CS-->>CSMS: GetTransactionStatusResponse [ongoingIndicator=true, messagesInQueue=true]
+
+    CS->>CSMS: TransactionEventRequest [eventType=Updated, meterValues present, offline=true]
+    CSMS-->>CS: TransactionEventResponse

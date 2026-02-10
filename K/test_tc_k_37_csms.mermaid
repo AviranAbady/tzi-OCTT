@@ -1,0 +1,17 @@
+sequenceDiagram
+    participant CS as Charging Station (OCTT)
+    participant CSMS as CSMS (System Under Test)
+
+    Note over CS,CSMS: Test Case: TC_K_37_CSMS
+    Note over CS,CSMS: Remote start transaction with charging profile - Success
+
+    CSMS->>CS: 1. RequestStartTransactionRequest
+    Note left of CSMS: idToken.idToken = <Configured valid_idtoken_idtoken><br/>idToken.type = <Configured valid_idtoken_type><br/>evseId = <Configured evseId><br/>chargingProfile.chargingProfilePurpose = TxProfile<br/>chargingProfile.transactionId = omitted<br/>chargingProfile.chargingProfileKind = Relative OR Absolute
+
+    CS-->>CSMS: 2. RequestStartTransactionResponse
+    Note right of CS: status = Accepted
+
+    CS->>CSMS: 3. TransactionEventRequest
+    Note right of CS: triggerReason = RemoteStart<br/>transactionInfo.remoteStartId is present
+
+    CSMS-->>CS: 4. TransactionEventResponse

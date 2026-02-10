@@ -1,21 +1,38 @@
 sequenceDiagram
     participant CS as Charging Station (OCTT)
-    participant CSMS as Charging Station Management System
-    
+    participant CSMS as CSMS (System Under Test)
+
+    Note over CS, CSMS: Test Case: TC_C_47_CSMS
+    Note over CS, CSMS: Stop Transaction with a Master Pass - With UI - All transactions
+    Note over CS, CSMS: Use Case: C16 | Requirement: C16_FR_01
+
     Note over CS, CSMS: Prerequisites
-    Note over CS, CSMS: Energy transfer started for EVSE 1 with valid idToken
-    Note over CS, CSMS: Energy transfer started for EVSE 2 with valid idToken2
-    Note over CS, CSMS: A Master Pass idToken is configured in the system
-    
-    Note over CS, CSMS: Master Pass Authentication
-    CS->>CSMS: AuthorizeRequest(idToken.idToken: masterpass_idtoken_idtoken, idToken.type: masterpass_idtoken_type)
+    Note over CS, CSMS: State is EnergyTransferStarted for EVSE 1 with valid_idtoken
+    Note over CS, CSMS: State is EnergyTransferStarted for EVSE 2 with valid_idtoken2
+    Note over CS, CSMS: An idToken with MasterPass as GroupId is configured
+
+    Note over CS, CSMS: Step 1: Master Pass Authentication
+    CS->>CSMS: AuthorizeRequest
+    Note right of CS: idToken.idToken: [Configured masterpass_idtoken_idtoken]<br/>idToken.type: [Configured masterpass_idtoken_type]
+
     CSMS-->>CS: AuthorizeResponse
-    
-    Note over CS, CSMS: Stop All Transactions
-    CS->>CSMS: TransactionEventRequest(eventType: Ended, transactionInfo.stoppedReason: MasterPass, idToken.idToken: masterpass_idtoken_idtoken, idToken.type: masterpass_idtoken_type) for EVSE 1
+    Note left of CSMS: idTokenInfo.status: Accepted<br/>idTokenInfo.groupIdToken.idToken: masterPassGroupId
+
+    Note over CS, CSMS: User selects to stop ALL transactions via UI
+
+    Note over CS, CSMS: Step 3: Stop EVSE 1 transaction
+    CS->>CSMS: TransactionEventRequest
+    Note right of CS: eventType: Ended<br/>transactionInfo.stoppedReason: MasterPass<br/>idToken.idToken: [Configured masterpass_idtoken_idtoken]<br/>idToken.type: [Configured masterpass_idtoken_type]
+
     CSMS-->>CS: TransactionEventResponse for EVSE 1
-    
-    CS->>CSMS: TransactionEventRequest(eventType: Ended, transactionInfo.stoppedReason: MasterPass, idToken.idToken: masterpass_idtoken_idtoken, idToken.type: masterpass_idtoken_type) for EVSE 2
+    Note left of CSMS: idTokenInfo.status: Accepted<br/>idTokenInfo.groupIdToken.idToken: masterPassGroupId
+
+    Note over CS, CSMS: Step 5: Stop EVSE 2 transaction
+    CS->>CSMS: TransactionEventRequest
+    Note right of CS: eventType: Ended<br/>transactionInfo.stoppedReason: MasterPass<br/>idToken.idToken: [Configured masterpass_idtoken_idtoken]<br/>idToken.type: [Configured masterpass_idtoken_type]
+
     CSMS-->>CS: TransactionEventResponse for EVSE 2
-    
+    Note left of CSMS: idTokenInfo.status: Accepted<br/>idTokenInfo.groupIdToken.idToken: masterPassGroupId
+
     Note over CS, CSMS: Result: All transactions stopped, cables unlocked
+    Note over CS, CSMS: Tool Validations: Step 2/4 require Accepted + masterPassGroupId

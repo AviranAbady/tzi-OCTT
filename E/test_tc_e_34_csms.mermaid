@@ -1,0 +1,9 @@
+sequenceDiagram
+    participant CS as Charging Station (OCTT)
+    participant CSMS as CSMS (System Under Test)
+
+    Note over CS,CSMS: TC_E_34 - Check Transaction status - without transactionId - without message in queue
+    Note over CS,CSMS: Use case: E14 | Requirements: E14.FR.06, E14.FR.08
+
+    CSMS->>CS: GetTransactionStatusRequest [transactionId=OMITTED]
+    CS-->>CSMS: GetTransactionStatusResponse [ongoingIndicator=OMITTED, messagesInQueue=false]

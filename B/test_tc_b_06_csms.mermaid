@@ -1,0 +1,13 @@
+sequenceDiagram
+    participant CS as Charging Station (OCTT)
+    participant CSMS as CSMS (System Under Test)
+
+    Note over CS,CSMS: Test Case: TC_B_06_CSMS
+    Note over CS,CSMS: Get Variables - single value
+
+    Note over CSMS: Manual Action: Request CSMS to get data for<br/>OCPPCommCtrlr.OfflineThreshold
+
+    CSMS->>CS: 1. GetVariablesRequest
+    Note left of CSMS: getVariableData[0]:<br/>variable.name = "OfflineThreshold"<br/>component.name = "OCPPCommCtrlr"<br/>attributeType absent or Actual
+
+    CS-->>CSMS: 2. GetVariablesResponse

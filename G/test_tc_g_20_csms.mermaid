@@ -1,0 +1,11 @@
+sequenceDiagram
+    participant CS as Charging Station (OCTT)
+    participant CSMS as CSMS (System Under Test)
+
+    Note over CS,CSMS: Test Case: TC_G_20_CSMS
+    Note over CS,CSMS: Connector status Notification - Lock Failure
+
+    CS->>CSMS: 1. NotifyEventRequest
+    Note right of CS: eventData.trigger = Delta<br/>eventData.component.name = "ConnectorPlugRetentionLock"<br/>eventData.variable.name = "Problem"<br/>eventData.actualValue = "true"
+
+    CSMS-->>CS: 2. NotifyEventResponse

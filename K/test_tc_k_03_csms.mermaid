@@ -1,0 +1,12 @@
+sequenceDiagram
+    participant CS as Charging Station (OCTT)
+    participant CSMS as CSMS (System Under Test)
+
+    Note over CS,CSMS: Test Case: TC_K_03_CSMS
+    Note over CS,CSMS: Set Charging Profile - ChargingStationMaxProfile
+
+    CSMS->>CS: 1. SetChargingProfileRequest
+    Note left of CSMS: evseId = 0<br/>chargingProfile.stackLevel = <Configured stackLevel><br/>chargingProfile.chargingProfilePurpose = ChargingStationMaxProfile<br/>chargingProfile.chargingProfileKind = Absolute<br/>chargingProfile.validFrom = <Not omitted><br/>chargingProfile.validTo = <Not omitted><br/>chargingSchedule.startSchedule = <Not omitted><br/>chargingSchedulePeriod.limit = 8.0 or 8000.0
+
+    CS-->>CSMS: 2. SetChargingProfileResponse
+    Note right of CS: status = Accepted

@@ -31,18 +31,18 @@ Post condition State is Authorized
 """
 
 from ocpp.v201.enums import (
-    AuthorizationStatusType,
-    IdTokenType,
-    TransactionEventType,
-    TriggerReasonType,
+    AuthorizationStatusEnumType as AuthorizationStatusType,
+    IdTokenEnumType as IdTokenType,
+    TransactionEventEnumType as TransactionEventType,
+    TriggerReasonEnumType as TriggerReasonType,
 )
 from ocpp.v201.call import TransactionEvent
 
-from mock_charge_point import MockChargePoint
+from tzi_charge_point import TziChargePoint
 from utils import now_iso
 
 
-async def authorized(cp: MockChargePoint, id_token_id: str, id_token_type: IdTokenType,
+async def authorized(cp: TziChargePoint, id_token_id: str, id_token_type: IdTokenType,
                      transaction_id: str = "transaction_id", evse_id: int = 1, connector_id: int = 1,
                      ev_connected_pre_session=False):
 
@@ -53,7 +53,12 @@ async def authorized(cp: MockChargePoint, id_token_id: str, id_token_type: IdTok
 
     # 2. The CSMS responds with an AuthorizeResponse
     assert authorize_response is not None
-    assert authorize_response.id_token_info.status == AuthorizationStatusType.accepted
+    id_token_info = authorize_response.id_token_info
+    if isinstance(id_token_info, dict):
+        assert id_token_info['status'] == 'Accepted', \
+            f"Expected AuthorizeResponse.idTokenInfo.status=Accepted, got {id_token_info['status']}"
+    else:
+        assert id_token_info.status == AuthorizationStatusType.accepted
 
     # 3. The OCTT sends a TransactionEventRequest
     if ev_connected_pre_session:
@@ -85,4 +90,9 @@ async def authorized(cp: MockChargePoint, id_token_id: str, id_token_type: IdTok
     # 4. The CSMS responds with a TransactionEventResponse
     assert transaction_event_response is not None
     if transaction_event_response.id_token_info is not None:
-        assert transaction_event_response.id_token_info.status == AuthorizationStatusType.accepted
+        te_id_token_info = transaction_event_response.id_token_info
+        if isinstance(te_id_token_info, dict):
+            assert te_id_token_info['status'] == 'Accepted', \
+                f"Expected TransactionEventResponse.idTokenInfo.status=Accepted, got {te_id_token_info['status']}"
+        else:
+            assert te_id_token_info.status == AuthorizationStatusType.accepted

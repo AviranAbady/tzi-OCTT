@@ -1,0 +1,14 @@
+sequenceDiagram
+    participant CS as Charging Station (OCTT)
+    participant CSMS as CSMS (System Under Test)
+
+    Note over CS,CSMS: Test Case: TC_O_27_CSMS
+    Note over CS,CSMS: Set Display Message - Specific transaction - Display message at StartTime
+
+    Note over CS,CSMS: Reusable State: EnergyTransferStarted
+
+    CSMS->>CS: 1. SetDisplayMessageRequest
+    Note left of CSMS: message.state = <omitted><br/>message.startDateTime = <Configured startDateTime><br/>message.endDateTime = <omitted><br/>message.transactionId = <Generated transactionId from Before>
+
+    CS-->>CSMS: 2. SetDisplayMessageResponse
+    Note right of CS: status = Accepted

@@ -1,0 +1,17 @@
+sequenceDiagram
+    participant CS as Charging Station (OCTT)
+    participant CSMS as CSMS (System Under Test)
+
+    Note over CS,CSMS: Test Case: TC_B_08_CSMS
+    Note over CS,CSMS: Get Variables - limit to maximum number of values
+    Note over CS,CSMS: Config: DeviceDataCtrlr.ItemsPerMessage.GetVariables = 4
+
+    Note over CSMS: Manual Action: Request CSMS for 5 variables:<br/>DeviceDataCtrlr.ItemsPerMessage[GetReport]<br/>DeviceDataCtrlr.ItemsPerMessage[GetVariables]<br/>DeviceDataCtrlr.BytesPerMessage[GetReport]<br/>DeviceDataCtrlr.BytesPerMessage[GetVariables]<br/>AuthCtrlr.AuthorizeRemoteStart
+
+    CSMS->>CS: 1a. GetVariablesRequest (max 4 variables)
+    CS-->>CSMS: 2a. GetVariablesResponse (4 items)
+
+    CSMS->>CS: 1b. GetVariablesRequest (remaining 1 variable)
+    CS-->>CSMS: 2b. GetVariablesResponse (1 item)
+
+    Note over CS: Validation: Each request must have<br/>at most MaxItemsPerMessageGetVariables items

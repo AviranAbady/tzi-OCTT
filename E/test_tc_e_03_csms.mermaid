@@ -1,0 +1,25 @@
+sequenceDiagram
+    participant CS as Charging Station (OCTT)
+    participant CSMS as Charging Station Management System
+
+    Note over CS,CSMS: TC_E_03 - Local start transaction - Cable plugin first - Success
+    Note over CS,CSMS: Use case: E02 | Requirement: E02.FR.02
+    Note over CS,CSMS: Before: Reusable State EVConnectedPreSession
+
+    Note over CS,CSMS: [Before State: EVConnectedPreSession]
+    CS->>CSMS: StatusNotificationRequest [connectorStatus=Occupied]
+    CSMS-->>CS: StatusNotificationResponse
+    CS->>CSMS: NotifyEventRequest [trigger=Delta, actualValue=Occupied]
+    CSMS-->>CS: NotifyEventResponse
+    CS->>CSMS: TransactionEventRequest [eventType=Started, triggerReason=CablePluggedIn, chargingState=EVConnected]
+    CSMS-->>CS: TransactionEventResponse
+
+    Note over CS,CSMS: Step 1 - Execute Reusable State Authorized
+    CS->>CSMS: AuthorizeRequest [idToken]
+    CSMS-->>CS: AuthorizeResponse [idTokenInfo.status=Accepted]
+    CS->>CSMS: TransactionEventRequest [eventType=Updated, triggerReason=Authorized, idToken]
+    CSMS-->>CS: TransactionEventResponse [idTokenInfo.status=Accepted]
+
+    Note over CS,CSMS: Step 2 - Execute Reusable State EnergyTransferStarted (EV already connected)
+    CS->>CSMS: TransactionEventRequest [eventType=Updated, triggerReason=ChargingStateChanged, chargingState=Charging]
+    CSMS-->>CS: TransactionEventResponse

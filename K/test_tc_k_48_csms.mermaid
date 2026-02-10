@@ -1,0 +1,11 @@
+sequenceDiagram
+    participant CS as Charging Station (OCTT)
+    participant CSMS as CSMS (System Under Test)
+
+    Note over CS,CSMS: Test Case: TC_K_48_CSMS
+    Note over CS,CSMS: Set / Update External Charging Limit (not on a transaction)
+
+    CS->>CSMS: 1. NotifyChargingLimitRequest
+    Note right of CS: chargingLimit.chargingLimitSource = EMS
+
+    CSMS-->>CS: 2. NotifyChargingLimitResponse

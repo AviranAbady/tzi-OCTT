@@ -1,0 +1,14 @@
+sequenceDiagram
+    participant CS as Charging Station (OCTT)
+    participant CSMS as CSMS (System Under Test)
+
+    Note over CS,CSMS: Test Case: TC_O_11_CSMS
+    Note over CS,CSMS: Get a Specific Display Message - Unknown parameters
+
+    Note over CS,CSMS: Before: A display message is configured
+
+    CSMS->>CS: 1. GetDisplayMessagesRequest
+    Note left of CSMS: id = <A different generated Id><br/>requestId = <Generated Id>
+
+    CS-->>CSMS: 2. GetDisplayMessagesResponse
+    Note right of CS: status = Unknown

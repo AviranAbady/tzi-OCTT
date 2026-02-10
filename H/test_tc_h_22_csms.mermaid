@@ -1,0 +1,13 @@
+sequenceDiagram
+    participant CS as Charging Station (OCTT)
+    participant CSMS as CSMS (System Under Test)
+
+    Note over CS,CSMS: Test Case: TC_H_22_CSMS
+    Note over CS,CSMS: Reserve a specific EVSE - Configured to Reject
+
+    Note over CS,CSMS: Manual Action: Trigger CSMS to send ReserveNowRequest
+
+    CSMS->>CS: 1. ReserveNowRequest
+
+    CS-->>CSMS: 2. ReserveNowResponse
+    Note right of CS: status = Rejected

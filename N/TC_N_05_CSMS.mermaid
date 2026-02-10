@@ -1,0 +1,30 @@
+sequenceDiagram
+    participant CS as Charging Station (OCTT)
+    participant CSMS as CSMS (System Under Test)
+
+    Note over CS,CSMS: Test Case: TC_N_05_CSMS
+    Note over CS,CSMS: Set Monitoring Base - success
+
+    Note over CS,CSMS: Step 1-2: monitoringBase = All
+
+    CSMS->>CS: 1. SetMonitoringBaseRequest
+    Note left of CSMS: monitoringBase = All
+
+    CS-->>CSMS: 2. SetMonitoringBaseResponse
+    Note right of CS: status = Accepted
+
+    Note over CS,CSMS: Step 3-4: monitoringBase = FactoryDefault
+
+    CSMS->>CS: 3. SetMonitoringBaseRequest
+    Note left of CSMS: monitoringBase = FactoryDefault
+
+    CS-->>CSMS: 4. SetMonitoringBaseResponse
+    Note right of CS: status = Accepted
+
+    Note over CS,CSMS: Step 5-6: monitoringBase = HardWiredOnly
+
+    CSMS->>CS: 5. SetMonitoringBaseRequest
+    Note left of CSMS: monitoringBase = HardWiredOnly
+
+    CS-->>CSMS: 6. SetMonitoringBaseResponse
+    Note right of CS: status = Accepted

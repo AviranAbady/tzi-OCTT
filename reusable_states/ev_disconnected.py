@@ -32,14 +32,18 @@ Post condition State is EVDisconnected
 
 from ocpp.v201.call import TransactionEvent
 from ocpp.v201.datatypes import EventDataType, ComponentType, VariableType
-from ocpp.v201.enums import ConnectorStatusType, EventTriggerType, EventNotificationType
+from ocpp.v201.enums import (
+    ConnectorStatusEnumType as ConnectorStatusType,
+    EventTriggerEnumType as EventTriggerType,
+    EventNotificationEnumType as EventNotificationType,
+)
 
-from mock_charge_point import MockChargePoint
+from tzi_charge_point import TziChargePoint
 from utils import now_iso
 
 
-async def ev_disconnected(cp: MockChargePoint, evse_id: int = 1, connector_id: int = 1, transaction_id: str = None):
-    response = await cp.send_status_notification(connector_id=connector_id, status=ConnectorStatusType.available)
+async def ev_disconnected(cp: TziChargePoint, evse_id: int = 1, connector_id: int = 1, transaction_id: str = None):
+    response = await cp.send_status_notification(connector_id=connector_id, status=ConnectorStatusType.available, evse_id=evse_id)
 
     data = [
         EventDataType(

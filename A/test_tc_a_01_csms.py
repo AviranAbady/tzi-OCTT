@@ -3,6 +3,12 @@ Test case name      Basic Authentication - Valid username/password combination
 Test case Id        TC_A_01_CSMS
 Use case Id(s)      A00, B01
 Requirement(s)      A00.FR.204, B01.FR.02
+
+Requirement Details:
+    A00.FR.204: When the Charging Station receives a BootNotificationRequest, the CSMS SHALL respond with a BootNotificationResponse.
+        Precondition: A00.FR.203
+    B01.FR.02: The CSMS has received BootNotificationRequest from the Charging Station. The CSMS SHALL respond to indicate whether it will accept the Charging Station.
+        Precondition: B01.FR.01 The CSMS has received BootNotificationRequest from the Charging Station.
 System under test   CSMS
 
 Description         The Charging Station uses Basic authentication to authenticate itself to the CSMS, when using security
@@ -25,9 +31,9 @@ import asyncio
 import pytest
 import os
 
-from ocpp.v201.enums import RegistrationStatusType, ConnectorStatusType
+from ocpp.v201.enums import RegistrationStatusEnumType, ConnectorStatusEnumType
 
-from mock_charge_point import MockChargePoint
+from tzi_charge_point import TziChargePoint
 from utils import get_basic_auth_headers, validate_schema
 
 BASIC_AUTH_CP = os.environ['BASIC_AUTH_CP']
@@ -39,18 +45,18 @@ TEST_USER_PASSWORD = os.environ['BASIC_AUTH_CP_PASSWORD']
                          indirect=True)
 async def test_tc_a_01(connection):
     assert connection.open
-    cp = MockChargePoint(BASIC_AUTH_CP, connection)
+    cp = TziChargePoint(BASIC_AUTH_CP, connection)
 
     start_task = asyncio.create_task(cp.start())
     boot_response = await cp.send_boot_notification()
 
     assert boot_response is not None
     assert validate_schema(data=boot_response, schema_file_name='BootNotificationResponse.json')
-    assert boot_response.status == RegistrationStatusType.accepted
+    assert boot_response.status == RegistrationStatusEnumType.accepted
 
     connectors_status = {
-        0: ConnectorStatusType.available,
-        1: ConnectorStatusType.occupied,
+        0: ConnectorStatusEnumType.available,
+        1: ConnectorStatusEnumType.occupied,
     }
 
     for connector_id, status in connectors_status.items():

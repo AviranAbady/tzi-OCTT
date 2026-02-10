@@ -1,0 +1,24 @@
+sequenceDiagram
+    participant CS as Charging Station (OCTT)
+    participant CSMS as CSMS (System Under Test)
+
+    Note over CS,CSMS: Test Case: TC_G_08_CSMS
+    Note over CS,CSMS: Change Availability Connector - Inoperative to operative
+
+    Note over CS,CSMS: Before: Memory State Unavailable for configured connectorId
+
+    Note over CS,CSMS: Manual Action: Request CSMS to change Connector availability to Operative
+
+    CSMS->>CS: 1. ChangeAvailabilityRequest
+    Note left of CSMS: operationalStatus = Operative<br/>evse.id = <Configured evseId><br/>evse.connectorId = <Configured connectorId>
+
+    CS-->>CSMS: 2. ChangeAvailabilityResponse
+    Note right of CS: status = Accepted
+
+    CS->>CSMS: 3. StatusNotificationRequest
+    Note right of CS: connectorStatus = Available<br/>evseId = <Configured evseId><br/>connectorId = <Configured connectorId>
+
+    CS->>CSMS: 3. NotifyEventRequest
+    Note right of CS: trigger = Delta<br/>actualValue = "Available"<br/>component.name = "Connector"<br/>component.evse.id = <Configured evseId><br/>component.evse.connectorId = <Configured connectorId><br/>variable.name = "AvailabilityState"
+
+    CSMS-->>CS: 4. Responds accordingly

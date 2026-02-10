@@ -1,0 +1,27 @@
+sequenceDiagram
+    participant CS as Charging Station (OCTT)
+    participant CSMS as CSMS (System Under Test)
+
+    Note over CS,CSMS: Test Case: TC_A_09_CSMS
+    Note over CS,CSMS: Update Charging Station Password - Accepted
+    Note over CS,CSMS: Prerequisite: CSMS supports security profile 1 and/or 2
+
+    CSMS->>CS: 1. SetVariablesRequest
+    Note left of CSMS: setVariableData[1]:<br/>variable.name = "BasicAuthPassword"<br/>component.name = "SecurityCtrlr"<br/>attributeValue = "<NewPassword>"
+
+    CS-->>CSMS: 2. SetVariablesResponse (status: Accepted)
+    Note over CS: Validation: status must be Accepted or RebootRequired
+
+    CS->>CSMS: 3. HTTP Upgrade Request with Authorization Header
+    Note right of CS: AUTHORIZATION: Basic<br/>Base64(ChargingStationId:NEW BasicAuthPassword)
+
+    CSMS-->>CS: 4. Validate new credentials and upgrade to WebSocket
+
+    CS->>CSMS: 5. BootNotificationRequest
+    CSMS-->>CS: 6. BootNotificationResponse
+    Note over CSMS: Validation: status must be Accepted
+
+    CS->>CSMS: 7. Notify current state of all connectors
+    CSMS-->>CS: 8. Response
+
+    Note over CS,CSMS: Note: Steps 5-8 only required<br/>when Step 2 status is RebootRequired

@@ -1,0 +1,21 @@
+sequenceDiagram
+    participant OCTT as OCTT (CS Simulator)
+    participant CSMS
+
+    Note over OCTT,CSMS: TC_D_02_CSMS - Send Local Authorization List - Differential Update
+
+    OCTT->>CSMS: BootNotificationRequest(reason=PowerUp)
+    CSMS-->>OCTT: BootNotificationResponse(status=Accepted)
+
+    OCTT->>CSMS: StatusNotificationRequest(connectorStatus=Available)
+    CSMS-->>OCTT: StatusNotificationResponse()
+
+    Note over CSMS: CSMS queries current version before differential update
+    CSMS->>OCTT: GetLocalListVersionRequest()
+    OCTT-->>CSMS: GetLocalListVersionResponse(versionNumber=1)
+
+    Note over CSMS: CSMS sends differential list with version > current
+    CSMS->>OCTT: SendLocalListRequest(updateType=Differential, versionNumber>1, localAuthorizationList=[...])
+    OCTT-->>CSMS: SendLocalListResponse(status=Accepted)
+
+    Note over OCTT,CSMS: Validation: updateType=Differential, versionNumber>currentVersion, localAuthorizationList non-empty

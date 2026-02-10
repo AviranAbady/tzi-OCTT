@@ -1,0 +1,35 @@
+sequenceDiagram
+    participant CS as Charging Station (OCTT)
+    participant CSMS as CSMS (System Under Test)
+
+    Note over CS,CSMS: Test Case: TC_H_20_CSMS
+    Note over CS,CSMS: Charging Station cancels reservation when Faulted
+
+    Note over CS,CSMS: Manual Action: Trigger CSMS to send ReserveNowRequest for a specific EVSE
+
+    CSMS->>CS: 1. ReserveNowRequest
+    Note left of CSMS: evseId = <Configured evseId><br/>connectorType = omit<br/>idToken.idToken = <Configured><br/>idToken.type = <Configured>
+
+    CS-->>CSMS: 2. ReserveNowResponse
+    Note right of CS: status = Accepted
+
+    CS->>CSMS: 3. StatusNotificationRequest
+    Note right of CS: connectorStatus = Reserved
+
+    CS->>CSMS: 3. NotifyEventRequest
+    Note right of CS: trigger = Delta<br/>actualValue = "Reserved"<br/>component.name = "Connector"<br/>variable.name = "AvailabilityState"
+
+    CSMS-->>CS: 4. Responds accordingly
+
+    CS->>CSMS: 5. StatusNotificationRequest
+    Note right of CS: connectorStatus = Faulted
+
+    CS->>CSMS: 5. NotifyEventRequest
+    Note right of CS: trigger = Delta<br/>actualValue = "Faulted"<br/>component.name = "Connector"<br/>variable.name = "AvailabilityState"
+
+    CSMS-->>CS: 6. Responds accordingly
+
+    CS->>CSMS: 7. ReservationStatusUpdateRequest
+    Note right of CS: reservationUpdateStatus = Removed<br/>reservationId = <id from step 1>
+
+    CSMS-->>CS: 8. ReservationStatusUpdateResponse

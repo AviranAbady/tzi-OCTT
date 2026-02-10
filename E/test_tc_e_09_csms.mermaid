@@ -1,0 +1,14 @@
+sequenceDiagram
+    participant CS as Charging Station (OCTT)
+    participant CSMS as Charging Station Management System
+
+    Note over CS,CSMS: TC_E_09 - Start transaction options - EVConnected
+    Note over CS,CSMS: Use case: E01(S2) | Requirement: E01.FR.02
+
+    CS->>CSMS: StatusNotificationRequest [connectorStatus=Occupied]
+    CSMS-->>CS: StatusNotificationResponse
+    CS->>CSMS: NotifyEventRequest [trigger=Delta, actualValue=Occupied, component.name=Connector, variable.name=AvailabilityState]
+    CSMS-->>CS: NotifyEventResponse
+
+    CS->>CSMS: TransactionEventRequest [eventType=Started, triggerReason=CablePluggedIn, chargingState=EVConnected, evse.id, evse.connectorId]
+    CSMS-->>CS: TransactionEventResponse

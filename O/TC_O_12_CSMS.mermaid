@@ -1,0 +1,16 @@
+sequenceDiagram
+    participant CS as Charging Station (OCTT)
+    participant CSMS as CSMS (System Under Test)
+
+    Note over CS,CSMS: Test Case: TC_O_12_CSMS
+    Note over CS,CSMS: Set Display Message - Replace DisplayMessage
+
+    Note over CS,CSMS: Before: A display message is configured
+
+    Note over CS,CSMS: Manual Action: Request the CSMS to send a display message with same id as already configured
+
+    CSMS->>CS: 1. SetDisplayMessageRequest
+    Note left of CSMS: message.id = <Configured_Id><br/>message.priority = <Configured Priority>
+
+    CS-->>CSMS: 2. SetDisplayMessageResponse
+    Note right of CS: status = Accepted

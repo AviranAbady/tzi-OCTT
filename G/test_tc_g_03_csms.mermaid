@@ -1,0 +1,24 @@
+sequenceDiagram
+    participant CS as Charging Station (OCTT)
+    participant CSMS as CSMS (System Under Test)
+
+    Note over CS,CSMS: Test Case: TC_G_03_CSMS
+    Note over CS,CSMS: Change Availability EVSE - Operative to inoperative
+
+    Note over CS,CSMS: 1. Execute Reusable State Unavailable for configured evseId
+
+    CSMS->>CS: 1.1 ChangeAvailabilityRequest
+    Note left of CSMS: operationalStatus = Inoperative<br/>evse.id = <Configured evseId>
+
+    CS-->>CSMS: 1.2 ChangeAvailabilityResponse
+    Note right of CS: status = Accepted
+
+    CS->>CSMS: 1.3 StatusNotificationRequest
+    Note right of CS: connectorStatus = Unavailable<br/>evseId = <Configured evseId>
+
+    CSMS-->>CS: 1.4 StatusNotificationResponse
+
+    CS->>CSMS: 1.5 NotifyEventRequest
+    Note right of CS: trigger = Delta<br/>actualValue = "Unavailable"<br/>component.name = "Connector"<br/>variable.name = "AvailabilityState"
+
+    CSMS-->>CS: 1.6 NotifyEventResponse

@@ -1,0 +1,26 @@
+sequenceDiagram
+    participant CS as Charging Station (OCTT)
+    participant CSMS as CSMS (System Under Test)
+
+    Note over CS,CSMS: Test Case: TC_M_21_CSMS
+    Note over CS,CSMS: Delete a certificate - Failed
+
+    Note over CS,CSMS: Before: CertificateInstalled (CSMSRootCertificate)
+
+    CSMS->>CS: InstallCertificateRequest
+    Note left of CSMS: certificateType = CSMSRootCertificate
+
+    CS-->>CSMS: InstallCertificateResponse
+    Note right of CS: status = Accepted
+
+    CSMS->>CS: 1. GetInstalledCertificateIdsRequest
+    Note left of CSMS: certificateType contains CSMSRootCertificate<br/>OR is omitted
+
+    CS-->>CSMS: 2. GetInstalledCertificateIdsResponse
+    Note right of CS: status = Accepted<br/>certificateHashDataChain[0].certificateType = CSMSRootCertificate<br/>certificateHashDataChain[0].hashAlgorithm = SHA256
+
+    CSMS->>CS: 3. DeleteCertificateRequest
+    Note left of CSMS: certificateHashData = <from Step 2>
+
+    CS-->>CSMS: 4. DeleteCertificateResponse
+    Note right of CS: status = Failed

@@ -1,0 +1,19 @@
+sequenceDiagram
+    participant CS as Charging Station (OCTT)
+    participant CSMS as CSMS (System Under Test)
+
+    Note over CS,CSMS: Test Case: TC_O_07_CSMS
+    Note over CS,CSMS: Get a Specific Display Message - Id
+
+    Note over CS,CSMS: Before: A display message is configured
+
+    CSMS->>CS: 1. GetDisplayMessagesRequest
+    Note left of CSMS: id = <Configured_Id><br/>priority = <Omitted><br/>state = <Omitted><br/>requestId = <Generated Id>
+
+    CS-->>CSMS: 2. GetDisplayMessagesResponse
+    Note right of CS: status = Accepted
+
+    CS->>CSMS: 3. NotifyDisplayMessagesRequest
+    Note right of CS: requestId = <from step 1><br/>messageInfo = [matching message]
+
+    CSMS-->>CS: 4. NotifyDisplayMessagesResponse

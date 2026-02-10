@@ -1,0 +1,23 @@
+sequenceDiagram
+    participant CS as Charging Station (OCTT)
+    participant CSMS as CSMS (System Under Test)
+
+    Note over CS,CSMS: Test Case: TC_N_46_CSMS
+    Note over CS,CSMS: Clear Customer Information - Update Local Authorization List
+
+    CSMS->>CS: 1. CustomerInformationRequest
+    Note left of CSMS: report = true<br/>clear = true<br/>idToken.idToken = configured<br/>idToken.type = configured
+
+    CS-->>CSMS: 2. CustomerInformationResponse
+    Note right of CS: status = Accepted
+
+    CS->>CSMS: 3. NotifyCustomerInformationRequest
+    Note right of CS: data = customer info<br/>seqNo = 0
+
+    CSMS-->>CS: 4. NotifyCustomerInformationResponse
+
+    CSMS->>CS: 5. SendLocalListRequest
+    Note left of CSMS: updateType = Differential<br/>versionNumber = configured+1<br/>localAuthorizationList[0].idToken
+
+    CS-->>CSMS: 6. SendLocalListResponse
+    Note right of CS: status = Accepted

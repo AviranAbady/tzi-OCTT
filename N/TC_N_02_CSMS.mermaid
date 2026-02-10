@@ -1,0 +1,27 @@
+sequenceDiagram
+    participant CS as Charging Station (OCTT)
+    participant CSMS as CSMS (System Under Test)
+
+    Note over CS,CSMS: Test Case: TC_N_02_CSMS
+    Note over CS,CSMS: Get Monitoring Report - with component/variable
+
+    Note over CS,CSMS: Request 1: ChargingStation/Power -> EmptyResultSet
+
+    CSMS->>CS: 1. GetMonitoringReportRequest
+    Note left of CSMS: componentVariable[0].component.name = "ChargingStation"<br/>componentVariable[0].variable.name = "Power"
+
+    CS-->>CSMS: 2. GetMonitoringReportResponse
+    Note right of CS: status = EmptyResultSet
+
+    Note over CS,CSMS: Request 2: EVSE#1/AvailabilityState -> Accepted
+
+    CSMS->>CS: 3. GetMonitoringReportRequest
+    Note left of CSMS: componentVariable[1].component.name = "EVSE"<br/>componentVariable[1].component.evse.id = 1<br/>componentVariable[1].variable.name = "AvailabilityState"
+
+    CS-->>CSMS: 4. GetMonitoringReportResponse
+    Note right of CS: status = Accepted
+
+    CS->>CSMS: 5. NotifyMonitoringReportRequest
+    Note right of CS: monitor data for<br/>EVSE#1 AvailabilityState
+
+    CSMS-->>CS: 6. NotifyMonitoringReportResponse

@@ -1,0 +1,11 @@
+sequenceDiagram
+    participant CS as Charging Station (OCTT)
+    participant CSMS as CSMS (System Under Test)
+
+    Note over CS,CSMS: Test Case: TC_N_48_CSMS
+    Note over CS,CSMS: Alert Event - Variable monitoring on write only
+
+    CS->>CSMS: 1. NotifyEventRequest
+    Note right of CS: trigger = Alerting<br/>actualValue = "" (empty)<br/>eventNotificationType = HardWiredMonitor<br/>component.name = EVSE<br/>variable.name = AvailabilityState
+
+    CSMS-->>CS: 2. NotifyEventResponse

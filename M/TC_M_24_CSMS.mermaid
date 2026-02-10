@@ -1,0 +1,12 @@
+sequenceDiagram
+    participant CS as Charging Station (OCTT)
+    participant CSMS as CSMS (System Under Test)
+
+    Note over CS,CSMS: Test Case: TC_M_24_CSMS
+    Note over CS,CSMS: Get Charging Station Certificate status - Success
+
+    CS->>CSMS: 1. GetCertificateStatusRequest
+    Note right of CS: ocspRequestData contains<br/>hashes from configured V2G<br/>certificate chain SubCA's
+
+    CSMS-->>CS: 2. GetCertificateStatusResponse
+    Note left of CSMS: status = Accepted<br/>ocspResult = <OCSPResponse, DER+Base64 encoded>

@@ -1,0 +1,121 @@
+"""
+TC_N_63 - Clear Customer Information - Clear and report - customerCertificate
+Use case: N10 | Requirements: N10.FR.08
+N10.FR.08: The CSMS SHALL include a reference to a customer by including either an idToken, customerCertificate or customerIdentifier in the CustomerInformationRequest.
+System under test: CSMS
+
+Description:
+    CSMS sends a message to the Charging Station to clear and retrieve raw
+    customer information using customerCertificate containing hash data.
+
+Prerequisites:
+    The CSMS supports retrieving/deleting CustomerInformation - CustomerCertificate
+
+Purpose:
+    To test that CSMS supports sending a CustomerInformationRequest with
+    report=true, clear=true and a customerCertificate, and that the CSMS
+    correctly handles the NotifyCustomerInformation sent back by the
+    Charging Station.
+
+Main:
+    1. CSMS sends CustomerInformationRequest (report=true, clear=true,
+       customerCertificate=<hash data>)
+    2. OCTT responds CustomerInformationResponse (status = Accepted)
+    3. OCTT sends NotifyCustomerInformationRequest
+    4. CSMS responds NotifyCustomerInformationResponse
+
+Tool validations:
+    * Step 1: CustomerInformationRequest with report = true, clear = true,
+              customerCertificate contains <customer certificate hash data>
+
+Configuration:
+    CSMS_ADDRESS              - WebSocket URL of the CSMS
+    BASIC_AUTH_CP             - Charge Point identifier
+    BASIC_AUTH_CP_PASSWORD    - Charge Point password
+    CONFIGURED_CONNECTOR_ID   - Connector id (default 1)
+    CSMS_ACTION_TIMEOUT       - Seconds to wait for CSMS action (default 30)
+"""
+import asyncio
+import logging
+import os
+import sys
+import time
+
+import pytest
+import websockets
+
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+from ocpp.v201.enums import (
+    RegistrationStatusEnumType,
+    ConnectorStatusEnumType,
+    CustomerInformationStatusEnumType,
+)
+
+from tzi_charge_point import TziChargePoint
+from utils import get_basic_auth_headers
+
+logging.basicConfig(level=logging.INFO)
+
+CSMS_ADDRESS = os.environ.get('CSMS_ADDRESS', 'ws://localhost:9000')
+BASIC_AUTH_CP = os.environ.get('BASIC_AUTH_CP', 'CP_1')
+BASIC_AUTH_CP_PASSWORD = os.environ.get('BASIC_AUTH_CP_PASSWORD', '0123456789123456')
+CONNECTOR_ID = int(os.environ.get('CONFIGURED_CONNECTOR_ID', '1'))
+CSMS_ACTION_TIMEOUT = int(os.environ.get('CSMS_ACTION_TIMEOUT', '30'))
+
+
+@pytest.mark.asyncio
+async def test_tc_n_63():
+    """Clear Customer Information - Clear and report - customerCertificate."""
+    cp_id = BASIC_AUTH_CP
+    uri = f'{CSMS_ADDRESS}/{cp_id}'
+    headers = get_basic_auth_headers(cp_id, BASIC_AUTH_CP_PASSWORD)
+
+    ws = await websockets.connect(
+        uri=uri,
+        subprotocols=['ocpp2.0.1'],
+        extra_headers=headers,
+    )
+    time.sleep(0.5)
+
+    cp = TziChargePoint(cp_id, ws)
+
+    start_task = asyncio.create_task(cp.start())
+
+    # Boot and establish session
+    boot_response = await cp.send_boot_notification()
+    assert boot_response.status == RegistrationStatusEnumType.accepted
+
+    await cp.send_status_notification(CONNECTOR_ID, ConnectorStatusEnumType.available)
+
+    # Step 1-2: Wait for CSMS to send CustomerInformationRequest
+    await asyncio.wait_for(
+        cp._received_customer_information.wait(),
+        timeout=CSMS_ACTION_TIMEOUT,
+    )
+
+    data = cp._customer_information_data
+    assert data is not None, "CustomerInformationRequest data must be present"
+
+    # Validate report=true, clear=true
+    assert data['report'] is True, f"Expected report=True, got {data['report']}"
+    assert data['clear'] is True, f"Expected clear=True, got {data['clear']}"
+
+    # Validate customerCertificate is present
+    assert data['customer_certificate'] is not None, \
+        "customerCertificate must be present"
+
+    request_id = data['request_id']
+
+    logging.info("TC_N_63 step 1-2 completed: CustomerInformationResponse Accepted")
+
+    # Step 3-4: OCTT sends NotifyCustomerInformationRequest
+    await cp.send_notify_customer_information(
+        data="Customer information data for the requested customerCertificate.",
+        seq_no=0,
+        request_id=request_id,
+    )
+
+    logging.info("TC_N_63 completed successfully")
+    start_task.cancel()
+    await ws.close()

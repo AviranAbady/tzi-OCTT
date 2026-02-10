@@ -1,0 +1,12 @@
+sequenceDiagram
+    participant CS as Charging Station (OCTT)
+    participant CSMS as CSMS (System Under Test)
+
+    Note over CS,CSMS: Test Case: TC_P_02_CSMS
+    Note over CS,CSMS: Data Transfer to the CSMS - Rejected / Unknown VendorId / Unknown MessageId
+
+    CS->>CSMS: 1. DataTransferRequest
+    Note right of CS: vendorId = <Configured vendorId><br/>messageId = <Configured messageId>
+
+    CSMS-->>CS: 2. DataTransferResponse
+    Note left of CSMS: status = UnknownVendorId OR<br/>UnknownMessageId OR Rejected

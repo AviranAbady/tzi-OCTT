@@ -1,0 +1,32 @@
+sequenceDiagram
+    participant CS as Charging Station (OCTT)
+    participant CSMS as CSMS (System Under Test)
+
+    Note over CS,CSMS: Test Case: TC_K_59_CSMS
+    Note over CS,CSMS: Renegotiating a Charging Schedule -<br/>Initiated by CSMS - Send NotifyEVChargingNeeds
+
+    Note over CS,CSMS: Reusable States: Authorized + EVConnectedPreSession<br/>+ ISO15118SmartCharging
+
+    CSMS->>CS: 1. SetChargingProfileRequest
+    Note left of CSMS: evseId = <Configured evseId><br/>chargingProfilePurpose = TxProfile<br/>transactionId = <Provided transactionId>
+
+    CS-->>CSMS: 2. SetChargingProfileResponse
+    Note right of CS: status = Accepted
+
+    CS->>CSMS: 3. NotifyEVChargingNeedsRequest
+    Note right of CS: evseId = <Configured evseId><br/>maxScheduleTuples & chargingNeeds
+
+    CSMS-->>CS: 4. NotifyEVChargingNeedsResponse
+    Note left of CSMS: status = Accepted or Processing
+
+    CSMS->>CS: 5. SetChargingProfileRequest
+    Note left of CSMS: evseId = <Configured evseId><br/>chargingProfilePurpose = TxProfile<br/>transactionId = <Provided transactionId>
+
+    CS-->>CSMS: 6. SetChargingProfileResponse
+    Note right of CS: status = Accepted
+
+    CS->>CSMS: 7. NotifyEVChargingScheduleRequest
+    Note right of CS: chargingSchedule = <Schedule provided at step 5>
+
+    CSMS-->>CS: 8. NotifyEVChargingScheduleResponse
+    Note left of CSMS: status = Accepted

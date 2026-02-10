@@ -1,0 +1,17 @@
+sequenceDiagram
+    participant CS as Charging Station (OCTT)
+    participant CSMS as CSMS (System Under Test)
+
+    Note over CS,CSMS: Test Case: TC_F_12_CSMS
+    Note over CS,CSMS: Trigger message - MeterValues - All EVSE
+
+    CSMS->>CS: 1. TriggerMessageRequest
+    Note left of CSMS: requestedMessage = MeterValues
+
+    CS-->>CSMS: 2. TriggerMessageResponse
+    Note right of CS: status = Accepted
+
+    CS->>CSMS: 3. MeterValuesRequest
+    Note right of CS: evseId omitted<br/>meterValue[0].sampledValue.context = Trigger<br/>Note: This step will be executed for every EVSE.
+
+    CSMS-->>CS: 4. MeterValuesResponse

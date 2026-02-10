@@ -1,0 +1,32 @@
+sequenceDiagram
+    participant CS as Charging Station (OCTT)
+    participant CSMS as CSMS (System Under Test)
+
+    Note over CS,CSMS: Test Case: TC_A_07_CSMS
+    Note over CS,CSMS: TLS - Client-side certificate - valid certificate
+    Note over CS,CSMS: Prerequisite: CSMS supports security profile 3
+
+    CS->>CSMS: 1. Initiate TLS handshake (Client Hello)
+    CSMS-->>CS: 2. Server Hello with <Configured server certificate>
+
+    Note over CS: 3. OCTT performs:<br/>Send <Configured client certificate><br/>Client Key Exchange<br/>Certificate verify<br/>Change Cipher Spec<br/>Finished
+
+    Note over CS: Tool Validation Step 3:<br/>- TLS version >= 1.2<br/>- Required cipher suites supported
+
+    Note over CSMS: 4. CSMS performs:<br/>Change Cipher Spec<br/>Finished
+
+    Note over CS,CSMS: TLS Handshake Complete (mutual TLS)
+
+    CS->>CSMS: 5. HTTP Upgrade Request
+    CSMS-->>CS: 6. Upgrade to (secured) WebSocket connection
+
+    CS->>CSMS: 7. BootNotificationRequest (reason: PowerUp)
+    CSMS-->>CS: 8. BootNotificationResponse (status: Accepted)
+    Note over CSMS: Validation: status must be Accepted
+
+    CS->>CSMS: 9. StatusNotificationRequest (connectorStatus: Available)
+    CSMS-->>CS: Response
+
+    CS->>CSMS: 9. NotifyEventRequest
+    Note right of CS: trigger: Delta<br/>actualValue: "Available"<br/>component.name: "Connector"<br/>variable.name: "AvailabilityState"
+    CSMS-->>CS: 10. Response

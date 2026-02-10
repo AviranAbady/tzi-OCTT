@@ -1,18 +1,19 @@
 sequenceDiagram
-    participant EV as EV Driver
-    participant CS as Charging Station
+    participant CS as Charging Station (OCTT)
     participant CSMS as CSMS (System Under Test)
-    
-    Note over EV,CS: Prerequisite: State is EVConnectedPreSession
-    Note over CS: Valid idToken is in Authorization Cache
-    
-    EV->>CS: Present idToken (e.g., RFID card)
-    Note over CS: Checks Authorization Cache<br/>Finds idToken with status "Accepted"
-    
+
+    Note over CS, CSMS: Test Case: TC_C_08_CSMS
+    Note over CS, CSMS: Authorization through Authorization Cache - Accepted
+    Note over CS, CSMS: Use Case: C12 | Requirement: C12_FR_03
+
+    Note over CS, CSMS: Prerequisite: State is EVConnectedPreSession
+    Note over CS: Valid idToken is in Authorization Cache with status Accepted
+
     CS->>CSMS: TransactionEventRequest
-    Note right of CS: triggerReason: Authorized<br/>idToken: Valid token from Auth Cache<br/>eventType: Updated<br/>TxStartPoint contains ParkingBayOccupancy
-    
-    CSMS->>CS: TransactionEventResponse
-    Note right of CSMS: idTokenInfo.status: Accepted
-    
-    Note over EV,CSMS: Transaction can start immediately<br/>without waiting for CSMS authorization
+    Note right of CS: triggerReason: Authorized<br/>idToken: Valid token from Authorization Cache<br/>eventType: Updated<br/>TxStartPoint contains ParkingBayOccupancy
+
+    CSMS-->>CS: TransactionEventResponse
+    Note left of CSMS: idTokenInfo.status: Accepted
+
+    Note over CS, CSMS: Tool Validation - Step 2
+    Note over CS, CSMS: Verify idTokenInfo.status == Accepted

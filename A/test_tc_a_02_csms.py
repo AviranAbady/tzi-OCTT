@@ -3,6 +3,10 @@ Test case name      Basic Authentication - Username does not equal ChargingStati
 Test case Id        TC_A_02_CSMS
 Use case Id(s)      A00
 Requirement(s)      A00.FR.204
+
+Requirement Details:
+    A00.FR.204: When the Charging Station receives a BootNotificationRequest, the CSMS SHALL respond with a BootNotificationResponse.
+        Precondition: A00.FR.203
 System under test   CSMS
 
 Description         The Charging Station uses Basic authentication to authenticate itself to the CSMS, when using security

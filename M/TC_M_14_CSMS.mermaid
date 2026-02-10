@@ -1,0 +1,14 @@
+sequenceDiagram
+    participant CS as Charging Station (OCTT)
+    participant CSMS as CSMS (System Under Test)
+
+    Note over CS,CSMS: Test Case: TC_M_14_CSMS
+    Note over CS,CSMS: Retrieve certificates - V2GRootCertificate
+
+    Note over CS,CSMS: Reusable State: GetInstalledCertificates (V2GRootCertificate)
+
+    CSMS->>CS: 1. GetInstalledCertificateIdsRequest
+    Note left of CSMS: certificateType = [V2GRootCertificate]
+
+    CS-->>CSMS: 2. GetInstalledCertificateIdsResponse
+    Note right of CS: status = Accepted<br/>certificateHashDataChain[0].certificateType = V2GRootCertificate

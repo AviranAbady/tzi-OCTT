@@ -1,0 +1,18 @@
+sequenceDiagram
+    participant CS as Charging Station (OCTT)
+    participant CSMS as CSMS (System Under Test)
+
+    Note over CS,CSMS: Test Case: TC_K_51_CSMS
+    Note over CS,CSMS: Reset / release external charging limit - With ongoing transaction
+
+    Note over CS,CSMS: Reusable State: EnergyTransferStarted
+
+    CS->>CSMS: 1. ClearedChargingLimitRequest
+    Note right of CS: chargingLimitSource = EMS
+
+    CSMS-->>CS: 2. ClearedChargingLimitResponse
+
+    CS->>CSMS: 3. TransactionEventRequest
+    Note right of CS: eventType = Updated<br/>triggerReason = ChargingRateChanged
+
+    CSMS-->>CS: 4. TransactionEventResponse

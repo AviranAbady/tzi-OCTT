@@ -5,11 +5,14 @@ sequenceDiagram
     Note over CS, CSMS: Test Case: TC_A_03_CSMS
     Note over CS, CSMS: Purpose: Verify CSMS validates and rejects invalid Basic auth credentials
     
-    CS->>CSMS: HTTP Upgrade Request
+    CS->>CSMS: 1. HTTP Upgrade Request (without Authorization header)
+    CSMS-->>CS: 2. Connection Upgrade Request Rejected
+
+    CS->>CSMS: 3. HTTP Upgrade Request (with invalid password)
     Note right of CS: Authorization: Basic [Base64(ChargingStationId:InvalidPassword)]
-    Note right of CS: Invalid password: Random string with high entropy (16-40 chars)
+    Note right of CS: Invalid password length 16-40 chars
     
-    CSMS-->>CS: Connection Upgrade Request Rejected
-    Note over CS, CSMS: Authentication Failed - Invalid Password
+    CSMS-->>CS: 4. Connection Upgrade Request Rejected
+    Note over CS, CSMS: Authentication failed due to missing/invalid credentials
     
     Note over CSMS: Validation: CSMS correctly rejects connection with invalid credentials

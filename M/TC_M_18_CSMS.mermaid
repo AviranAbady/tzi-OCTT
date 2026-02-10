@@ -1,0 +1,12 @@
+sequenceDiagram
+    participant CS as Charging Station (OCTT)
+    participant CSMS as CSMS (System Under Test)
+
+    Note over CS,CSMS: Test Case: TC_M_18_CSMS
+    Note over CS,CSMS: Retrieve certificates - All certificateTypes
+
+    CSMS->>CS: 1. GetInstalledCertificateIdsRequest
+    Note left of CSMS: certificateType is omitted
+
+    CS-->>CSMS: 2. GetInstalledCertificateIdsResponse
+    Note right of CS: status = Accepted<br/>certificateHashDataChain contains<br/>all certificates stored at OCTT truststore

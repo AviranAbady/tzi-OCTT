@@ -1,0 +1,23 @@
+sequenceDiagram
+    participant CS as Charging Station (OCTT)
+    participant CSMS as CSMS (System Under Test)
+
+    Note over CS,CSMS: Test Case: TC_B_18_CSMS
+    Note over CS,CSMS: Get Custom Report - componentCriteria + component/variables
+
+    Note over CSMS: Manual Action: Request EVSE#1 AvailabilityState<br/>from all Problem components
+
+    CSMS->>CS: 1. GetReportRequest
+    Note left of CSMS: componentCriteria = Problem<br/>componentVariable[0].component.name = "EVSE"<br/>componentVariable[0].component.evse.id = 1<br/>componentVariable[0].variable.name = "AvailabilityState"
+
+    CS-->>CSMS: 2. GetReportResponse (status: EmptyResultSet)
+
+    Note over CSMS: Manual Action: Request EVSE#1 AvailabilityState<br/>from all Available components
+
+    CSMS->>CS: 3. GetReportRequest
+    Note left of CSMS: componentCriteria = Available<br/>componentVariable[0].component.name = "EVSE"<br/>componentVariable[0].component.evse.id = 1<br/>componentVariable[0].variable.name = "AvailabilityState"
+
+    CS-->>CSMS: 4. GetReportResponse (status: Accepted)
+
+    CS->>CSMS: 5. NotifyReportRequest
+    CSMS-->>CS: 6. NotifyReportResponse

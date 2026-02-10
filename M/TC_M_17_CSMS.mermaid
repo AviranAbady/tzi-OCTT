@@ -1,0 +1,12 @@
+sequenceDiagram
+    participant CS as Charging Station (OCTT)
+    participant CSMS as CSMS (System Under Test)
+
+    Note over CS,CSMS: Test Case: TC_M_17_CSMS
+    Note over CS,CSMS: Retrieve certificates - CSMSRootCertificate & ManufacturerRootCertificate
+
+    CSMS->>CS: 1. GetInstalledCertificateIdsRequest
+    Note left of CSMS: certificateType = [CSMSRootCertificate, ManufacturerRootCertificate]
+
+    CS-->>CSMS: 2. GetInstalledCertificateIdsResponse
+    Note right of CS: status = Accepted<br/>certificateHashDataChain[0].certificateType = CSMSRootCertificate<br/>certificateHashDataChain[1].certificateType = ManufacturerRootCertificate

@@ -1,0 +1,932 @@
+{
+  "A00.FR.204": {
+    "definition": "When the Charging Station receives a BootNotificationRequest, the CSMS SHALL respond with a BootNotificationResponse.",
+    "page": 19,
+    "precondition": "A00.FR.203"
+  },
+  "A00.FR.306": {
+    "definition": "The CSMS SHALL act as the TLS server.",
+    "page": 31,
+    "precondition": ""
+  },
+  "A00.FR.307": {
+    "definition": "The CSMS SHALL authenticate itself by using the CSMS certificate as server side certificate.",
+    "page": 31,
+    "precondition": ""
+  },
+  "A00.FR.312": {
+    "definition": "The communication channel SHALL be secured using Transport Layer Security (TLS) [4].",
+    "page": 31,
+    "precondition": ""
+  },
+  "A00.FR.314": {
+    "definition": "Both of these endpoints SHALL check the version of TLS used. A. Security 21/491 Part 2 - Specification",
+    "page": 31,
+    "precondition": ""
+  },
+  "A00.FR.315": {
+    "definition": "A00.FR.314\nAND\nThe CSMS detects that the Charging\nStation only allows connections\nusing an older version of TLS, or\nonly allows SSL",
+    "page": 32,
+    "precondition": "A00.FR.314 AND The CSMS detects that the Charging Station only allows connections using an older version of TLS, or only allows SSL"
+  },
+  "A00.FR.318": {
+    "definition": "The CSMS SHALL support at least the following four cipher suites: TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256 TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384 TLS_RSA_WITH_AES_128_GCM_SHA256 TLS_RSA_WITH_AES_256_GCM_SHA384 Note: The CSMS will have to provide 2 different certificates to support both cipher suites. Also when using security profile 3, the CSMS should be capable of generating client side certificates for both cipher suites.",
+    "page": 32,
+    "precondition": ""
+  },
+  "A00.FR.321": {
+    "definition": "The TLS Server and Client SHALL NOT use TLS compression methods to avoid compression side-channel attacks and to ensure interoperability as described in Section 6 of [10].",
+    "page": 32,
+    "precondition": ""
+  },
+  "A00.FR.405": {
+    "definition": "The CSMS SHALL verify that the certificate belongs to this Charging Station by checking that the CN (commonName) RDN in the subject field of the certificate contains the unique serial number of the Charging Station (see Certificate Properties).",
+    "page": 34,
+    "precondition": ""
+  },
+  "A00.FR.407": {
+    "definition": "NOT A00.FR.429 AND If the Charging Station does not own a valid certificate, or if the certification path is invalid The CSMS SHALL terminate the connection.",
+    "page": 34,
+    "precondition": "NOT A00.FR.429 AND If the Charging Station does not own a valid certificate, or if the certification path is invalid"
+  },
+  "A00.FR.409": {
+    "definition": "The CSMS SHALL act as the TLS server. (Same as A00.FR.306)",
+    "page": 34,
+    "precondition": ""
+  },
+  "A00.FR.410": {
+    "definition": "The CSMS SHALL authenticate itself by using the CSMS certificate as server side certificate. (Same as A00.FR.307)",
+    "page": 34,
+    "precondition": ""
+  },
+  "A00.FR.415": {
+    "definition": "The communication channel SHALL be secured using Transport Layer Security (TLS) [4]. (Same as A00.FR.312)",
+    "page": 34,
+    "precondition": ""
+  },
+  "A00.FR.416": {
+    "definition": "The Charging Station and CSMS SHALL only use TLS v1.2 or above. (Same as A00.FR.313)",
+    "page": 34,
+    "precondition": ""
+  },
+  "A00.FR.417": {
+    "definition": "Both of these endpoints SHALL check the version of TLS used. (Same as",
+    "page": 34,
+    "precondition": ""
+  },
+  "A00.FR.418": {
+    "definition": "A00.FR.417\nAND\nThe CSMS detects that the Charging\nStation only allows connections\nusing an older version of TLS, or\nonly allows SSL",
+    "page": 34,
+    "precondition": "A00.FR.417 AND The CSMS detects that the Charging Station only allows connections using an older version of TLS, or only allows SSL"
+  },
+  "A00.FR.421": {
+    "definition": "The CSMS SHALL support at least the following four cipher suites: TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256 TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384 TLS_RSA_WITH_AES_128_GCM_SHA256 TLS_RSA_WITH_AES_256_GCM_SHA384 (Same as A00.FR.318) Note: The CSMS will have to provide 2 different certificates to support both cipher suites. Also when using security profile 3, the CSMS should be capable of generating client side certificates for both cipher suites.",
+    "page": 35,
+    "precondition": ""
+  },
+  "A00.FR.502": {
+    "definition": "A00.FR.501\nAND\nRSA or DSA",
+    "page": 36,
+    "precondition": "A00.FR.501 AND RSA or DSA"
+  },
+  "A00.FR.503": {
+    "definition": "A00.FR.501\nAND\nelliptic curve cryptography",
+    "page": 36,
+    "precondition": "A00.FR.501 AND elliptic curve cryptography"
+  },
+  "A00.FR.507": {
+    "definition": "The certificates SHALL be stored and transmitted in the X.509 format encoded in Privacy-Enhanced Mail (PEM) format.",
+    "page": 36,
+    "precondition": ""
+  },
+  "A00.FR.508": {
+    "definition": "All certificates SHALL include a serial number.",
+    "page": 26,
+    "precondition": ""
+  },
+  "A00.FR.510": {
+    "definition": "For the CSMS certificate, the subject field SHALL match the FQDN of the endpoint of the server in the CN (commonName) RDN.",
+    "page": 26,
+    "precondition": ""
+  },
+  "A01.FR.02": {
+    "definition": "To set a Charging Station\u2019s basic authorization password via OCPP, the CSMS SHALL send the Charging Station a SetVariablesRequest message with the BasicAuthPassword Configuration Variable. A. Security 30/491 Part 2 - Specification",
+    "page": 40,
+    "precondition": ""
+  },
+  "A01.FR.03": {
+    "definition": "A01.FR.02\nAND\nThe Charging Station responds to this\nSetVariablesRequest with a\nSetVariablesResponse with status\nAccepted.",
+    "page": 41,
+    "precondition": "A01.FR.02 AND The Charging Station responds to this SetVariablesRequest with a SetVariablesResponse with status Accepted."
+  },
+  "A01.FR.04": {
+    "definition": "While the CSMS SHALL still accepts a connection from the Charging Station, it MAY restrict the functionality that the Charging Station can use. The CSMS can use the BootNotification state: Pending for this. During the Pending state, the CSMS can for example retry to update the credentials.",
+    "page": 41,
+    "precondition": "A01.FR.02 AND The Charging Station responds to this SetVariablesRequest with a SetVariablesResponse with status other than Accepted"
+  },
+  "A01.FR.05": {
+    "definition": "After the Password has been changed, the Charging Station SHALL send a SecurityEventNotification.",
+    "page": 41,
+    "precondition": "A01.FR.04"
+  },
+  "A02.FR.11": {
+    "definition": "Upon receipt of a SignCertificateRequest AND It is able to process the request The CSMS SHALL set status to Accepted in the SignCertificateResponse.",
+    "page": 44,
+    "precondition": "Upon receipt of a SignCertificateRequest AND It is able to process the request"
+  },
+  "A02.FR.14": {
+    "definition": "When receiving a SignCertificateRequest with certificateType included It is RECOMMENDED for the CSMS to set the certificateType field in the CertificateSignedRequest to the type of certificate in the SignCertificateRequest.",
+    "page": 45,
+    "precondition": "When receiving a SignCertificateRequest with certificateType included"
+  },
+  "A05.FR.04": {
+    "definition": "The Charging Station receives SetVariablesRequest for NetworkConfigurationPriority containing profile slots for NetworkConnectionProfiles with a 'securityProfile' value equal to or higher than the current value AND all prerequisites are met The Charging Station SHALL respond with SetVariablesResponse(Accepted)",
+    "page": 52,
+    "precondition": "The Charging Station receives SetVariablesRequest for NetworkConfigurationPriority containing profile slots for NetworkConnectionProfiles with a 'securityProfile' value equal to or higher than the current value AND all prerequisites are met"
+  },
+  "A05.FR.07": {
+    "definition": "The Charging Station SHALL send a SecurityEventNotification to the CSMS to notify of certificate installation.",
+    "page": 52,
+    "precondition": "A05.FR.06"
+  },
+  "B01.FR.02": {
+    "definition": "The CSMS has received BootNotificationRequest from the Charging Station. The CSMS SHALL respond to indicate whether it will accept the Charging Station.",
+    "page": 56,
+    "precondition": "B01.FR.01 The CSMS has received BootNotificationRequest from the Charging Station."
+  },
+  "B02.FR.01": {
+    "definition": "After the Charging Station received the Pending status. The CSMS MAY send messages to retrieve information from the Charging Station (as described in use cases B06, B07, B08) or change its configuration by SetVariablesRequest (as described in use case B05). The Charging Station SHALL respond to these messages. The Pending status can thus indicate that the",
+    "page": 59,
+    "precondition": "After the Charging Station received the Pending status."
+  },
+  "B02.FR.06": {
+    "definition": "When the CSMS returns the Pending status The communication channel SHALL NOT be closed by either the Charging Station or the CSMS.",
+    "page": 59,
+    "precondition": "When the CSMS returns the Pending status"
+  },
+  "B02.FR.09": {
+    "definition": "The Charging Station has received a BootNotificationResponse with status Pending AND the Charging Station sends a RPC Framework: CALL message that is NOT a BootNotificationRequest or a message triggered by one of the following messages: TriggerMessageRequest,",
+    "page": 59,
+    "precondition": "The Charging Station has received a BootNotificationResponse with status Pending AND the Charging Station sends a RPC Framework: CALL message that is NOT a BootNotificationRequest or a message triggered by one of the following messages: TriggerMessageRequest, GetBaseReportRequest, GetReportRequest."
+  },
+  "B03.FR.07": {
+    "definition": "B03.FR.03\nAND\nCharging Station sends a message that is not a\nBootNotificationRequest",
+    "page": 61,
+    "precondition": "B03.FR.03 AND CSMS sends a message that is not a response to a BootNotificationRequest from Charging Station"
+  },
+  "B05.FR.01": {
+    "definition": "When the Charging Station receives a SetVariablesRequest with an X number of SetVariableData elements The Charging Station SHALL respond with an SetVariablesResponse with an equal (X) number of SetVariableResult elements, one for every SetVariableData element in the SetVariablesRequest.",
+    "page": 64,
+    "precondition": "When the Charging Station receives a SetVariablesRequest with an X number of SetVariableData elements"
+  },
+  "B05.FR.02": {
+    "definition": "AND If the SetVariablesRequest contains an attributeType The corresponding SetVariableResult element in the SetVariablesResponse SHALL also contain the same attributeType",
+    "page": 64,
+    "precondition": "B05.FR.01"
+  },
+  "B05.FR.03": {
+    "definition": "B05.FR.02\nAND\nIf the SetVariablesRequest contains an\nattributeType",
+    "page": 64,
+    "precondition": "B05.FR.02 AND If the SetVariablesRequest contains an attributeType"
+  },
+  "B05.FR.10": {
+    "definition": "When the Charging Station was able to set the given value from the SetVariableData The Charging Station SHALL set the attributeStatus field in the corresponding SetVariableResult to: Accepted.",
+    "page": 64,
+    "precondition": "When the Charging Station was able to set the given value from the SetVariableData"
+  },
+  "B05.FR.12": {
+    "definition": "When the Charging Station receives a SetVariablesRequest without an attributeType. The corresponding SetVariableResult element in the SetVariablesResponse SHALL contain the attributeType Actual. B. Provisioning 54/491 Part 2 - Specification",
+    "page": 64,
+    "precondition": "When the Charging Station receives a SetVariablesRequest without an attributeType."
+  },
+  "B06.FR.01": {
+    "definition": "When the Charging Station receives a GetVariablesRequest with an X number of GetVariableData elements The Charging Station SHALL respond with an GetVariablesResponse with an equal (X) number of GetVariableResult elements, one for every GetVariableData element in the GetVariablesRequest.",
+    "page": 66,
+    "precondition": "When the Charging Station receives a GetVariablesRequest with an X number of GetVariableData elements"
+  },
+  "B06.FR.02": {
+    "definition": "AND If the GetVariablesRequest contains an attributeType The corresponding GetVariableResult element in the GetVariablesResponse SHALL also contain the same attributeType B. Provisioning",
+    "page": 66,
+    "precondition": "B06.FR.01"
+  },
+  "B06.FR.03": {
+    "definition": "B06.FR.02\nAND\nIf the GetVariablesRequest contains an\nattributeType",
+    "page": 66,
+    "precondition": "B06.FR.02 AND If the GetVariablesRequest contains an attributeType"
+  },
+  "B06.FR.04": {
+    "definition": "The CSMS SHALL respond with SetVariablesResponse indicating the result.",
+    "page": 67,
+    "precondition": "B06.FR.01"
+  },
+  "B06.FR.05": {
+    "definition": "The CSMS SHALL NOT send more GetVariableData elements in a GetVariablesRequest than reported by the Charging Station via ItemsPerMessageGetVariables.",
+    "page": 67,
+    "precondition": ""
+  },
+  "B06.FR.10": {
+    "definition": "When the Charging Station was able to get the value requested from a GetVariablesRequest The Charging Station SHALL set the attributeStatus field in the corresponding GetVariableResult to: Accepted and set the attributeValue to the found value.",
+    "page": 67,
+    "precondition": "When the Charging Station was able to get the value requested from a GetVariablesRequest"
+  },
+  "B06.FR.11": {
+    "definition": "When the Charging Station receives a GetVariablesRequest without an attributeType. The corresponding GetVariableResult element in the GetVariablesResponse SHALL contain the attributeType Actual.",
+    "page": 67,
+    "precondition": "When the Charging Station receives a GetVariablesRequest without an attributeType."
+  },
+  "B07.FR.07": {
+    "definition": "B07.FR.01 AND When reportBase is ConfigurationInventory Then the Charging Station SHALL respond with a NotifyReportRequest to report on all component-variables that can be set by the operator including their VariableCharacteristics.",
+    "page": 69,
+    "precondition": "B07.FR.01 AND When reportBase is ConfigurationInventory"
+  },
+  "B07.FR.08": {
+    "definition": "B07.FR.01 AND When reportBase is FullInventory Then the Charging Station SHALL respond with a NotifyReportRequest to report on all component-variables including their VariableCharacteristics. As a minimum the required variables mentioned in Charging Infrastructure related shall be reported as well as the required variables in Section 1 Controller",
+    "page": 69,
+    "precondition": "B07.FR.01 AND When reportBase is FullInventory"
+  },
+  "B07.FR.09": {
+    "definition": "B07.FR.01 AND When reportBase is SummaryInventory Then the Charging Station SHALL respond with a NotifyReportRequest to report on components and variables related to the availability and condition of the Charging Station, notably operationalStatus of the Charging Station, EVSE and",
+    "page": 69,
+    "precondition": "B07.FR.01 AND When reportBase is SummaryInventory"
+  },
+  "B08.FR.01": {
+    "definition": "NOT B08.FR.15 AND NOT B08.FR.16 AND When the Charging Station receives a GetReportRequest for supported criteria The Charging Station SHALL send a GetReportResponse with Accepted",
+    "page": 71,
+    "precondition": "NOT B08.FR.15 AND NOT B08.FR.16 AND When the Charging Station receives a GetReportRequest for supported criteria"
+  },
+  "B08.FR.03": {
+    "definition": "The Charging Station SHALL respond with GetBaseReportResponse and start sending NotifyReportRequest messages.",
+    "page": 72,
+    "precondition": "B08.FR.01"
+  },
+  "B09.FR.01": {
+    "definition": "On receipt of the SetNetworkProfileRequest The Charging Station SHALL validate the content, store the new data and if successful, respond by sending a SetNetworkProfileResponse message, with status Accepted Matches B09.FR.33 for NetworkConfiguration.",
+    "page": 74,
+    "precondition": "On receipt of the SetNetworkProfileRequest"
+  },
+  "B09.FR.03": {
+    "definition": "If setting a valid NetworkConnectionProfile in a SetNetworkProfileRequest fails. The Charging Station SHALL respond by sending a SetNetworkProfileResponse message, with status Failed",
+    "page": 75,
+    "precondition": "If setting a valid NetworkConnectionProfile in a SetNetworkProfileRequest fails."
+  },
+  "B11.FR.04": {
+    "definition": "The Charging Station SHALL send a NotifyReportRequest for each component-variable combination that changed.",
+    "page": 81,
+    "precondition": "B11.FR.03"
+  },
+  "B12.FR.01": {
+    "definition": "When the Charging Station receives a ResetRequest(OnIdle) AND a transaction is ongoing The Charging Station SHALL respond with a ResetResponse(Scheduled), to indicate whether the Charging Station will attempt to reset itself or EVSE after all transactions on Charging Station or EVSE have ended.",
+    "page": 83,
+    "precondition": "When the Charging Station receives a ResetRequest(OnIdle) AND a transaction is ongoing"
+  },
+  "B12.FR.03": {
+    "definition": "If no evseId is supplied AND If any transaction is in progress and an OnIdle reset is received. The transaction of the Charging Station SHALL be terminated normally, before the reboot, e.g. as in E06 - Stop Transaction.",
+    "page": 83,
+    "precondition": "If no evseId is supplied AND If any transaction is in progress and an OnIdle reset is received."
+  },
+  "B12.FR.07": {
+    "definition": "If an evseId is supplied AND If a transaction is in progress on the EVSE and an OnIdle reset is received. The transaction on the EVSE SHALL be terminated normally, before the reset, e.g. as in E06 - Stop Transaction.",
+    "page": 84,
+    "precondition": "If an evseId is supplied AND If a transaction is in progress on the EVSE and an OnIdle reset is received."
+  },
+  "C01.FR.07": {
+    "definition": "AuthorizeResponse SHALL include an authorization status value indicating acceptance or a reason for rejection. See AuthorizationStatusEnu mType for the possible reasons of rejection.",
+    "page": 90,
+    "precondition": ""
+  },
+  "C04.FR.01": {
+    "definition": "When the CSMS receives an AuthorizeRequest with a keyCode that is not valid at this Charging Station The CSMS SHALL respond with an AuthorizeResponse message with status = Invalid.",
+    "page": 97,
+    "precondition": "When the CSMS receives an AuthorizeRequest with a keyCode that is not valid at this Charging Station"
+  },
+  "C06.FR.04": {
+    "definition": "If the CSMS receives an AuthorizeRequest. it SHALL respond with an AuthorizeResponse and SHALL include an authorization status value indicating acceptance or a reason for rejection. C. Authorization 92/491 Part 2 - Specification",
+    "page": 102,
+    "precondition": "If the CSMS receives an AuthorizeRequest."
+  },
+  "C07.FR.04": {
+    "definition": "If the CSMS receives an AuthorizeRequest. It SHALL respond with an AuthorizeResponse and SHALL include an authorization status value indicating acceptance or a reason for rejection.",
+    "page": 104,
+    "precondition": "If the CSMS receives an AuthorizeRequest."
+  },
+  "C09.FR.02": {
+    "definition": "IdTokens that are part of the same group for authorization purposes SHALL have a common group identifier in the optional groupIdToken element in IdTokenInfo.",
+    "page": 98,
+    "precondition": ""
+  },
+  "C09.FR.03": {
+    "definition": "When a transaction has been authorized/started with a certain IdToken. An EV Driver with a different, valid IdToken, but with the same groupIdToken SHALL be authorized to stop the transaction.",
+    "page": 99,
+    "precondition": "When a transaction has been authorized/started with a certain IdToken."
+  },
+  "C07.FR.05": {
+    "definition": "The CSMS SHALL verify validity of the certificate and certificate chain via real-time or cached OCSP data.",
+    "page": 104,
+    "precondition": "C07.FR.02"
+  },
+  "C07.FR.16": {
+    "definition": "C07.FR.04 AND the certificate chain (provided in certificate or iso15118CertificateHashData) has been revoked CSMS SHALL return an AuthorizationResponse containing a certificateStatus = CertificateRevoked and an idTokenInfo.status = Invalid If certificate is revoked,",
+    "page": 105,
+    "precondition": "C07.FR.04 AND the certificate chain (provided in certificate or iso15118CertificateHashData) has been revoked"
+  },
+  "C12.FR.03": {
+    "definition": "C12.FR.02\nAND\nThe CSMS SHALL check the authorization status of the IdToken when processing this TransactionEventRequest.",
+    "page": 104,
+    "precondition": "C12.FR.02"
+  },
+  "C16.FR.01": {
+    "definition": "User presents an IdToken that has a groupId equal to MasterPassGroupId AND The Charging Station has a UI with input capabilities. The Charging Station SHALL \"show\" the Master Pass UI to let user select which transaction to stop.",
+    "page": 112,
+    "precondition": "User presents an IdToken that has a groupId equal to MasterPassGroupId AND The Charging Station has a UI with input capabilities."
+  },
+  "C16.FR.02": {
+    "definition": "User presents an IdToken that has a groupId equal to MasterPassGroupId AND the Charging Station does NOT have a UI. The Charging Station SHALL stop all ongoing transactions as described in use case E07.",
+    "page": 112,
+    "precondition": "User presents an IdToken that has a groupId equal to MasterPassGroupId AND the Charging Station does NOT have a UI."
+  },
+  "D01.FR.01": {
+    "definition": "SendLocalListRequest SHALL contain the type of update (updateType) and a version number (versionNumber) that the Charging Station MUST associate with the Local Authorization List after it has been updated.",
+    "page": 125,
+    "precondition": ""
+  },
+  "D01.FR.06": {
+    "definition": "All IdTokens in the Local Authorization List SHALL be unique. No duplicate values are allowed.",
+    "page": 126,
+    "precondition": ""
+  },
+  "D01.FR.17": {
+    "definition": "If the Charging Station receives a SendLocalListRequest with updateType is Differential AND localAuthorizationList contains AuthorizationData elements without idTokenInfo The Charging Station SHALL remove these elements from its Local Authorization List and set the version number to the value specified in the message.",
+    "page": 117,
+    "precondition": "If the Charging Station receives a SendLocalListRequest with updateType is Differential AND localAuthorizationList contains AuthorizationData elements without idTokenInfo"
+  },
+  "D01.FR.18": {
+    "definition": "versionNumber in a SendLocalListRequest SHALL be greater than 0. In GetLocalListVersionResp onse the versionNumber = 0 has a special meaning: No Local List installed. So the value 0 should never be used.",
+    "page": 127,
+    "precondition": ""
+  },
+  "E01.FR.01": {
+    "definition": "TxStartPoint contains: ParkingBayOccupancy AND Parking Bay Detector detects an \"EV\" AND No transaction has started yet The Charging Station SHALL start a transaction and send a TransactionEventRequest (eventType = Started) to the CSMS.",
+    "page": 139,
+    "precondition": "TxStartPoint contains: ParkingBayOccupancy AND Parking Bay Detector detects an \"EV\" AND No transaction has started yet"
+  },
+  "E01.FR.02": {
+    "definition": "TxStartPoint contains: EVConnected AND The Charging Station has a connection with the EV AND No transaction has started yet on this EVSE The Charging Station SHALL start a transaction and send a TransactionEventRequest (eventType = Started) to the CSMS.",
+    "page": 139,
+    "precondition": "TxStartPoint contains: EVConnected AND The Charging Station has a connection with the EV AND No transaction has started yet on this EVSE"
+  },
+  "E01.FR.03": {
+    "definition": "TxStartPoint contains: Authorized AND The EV Driver is authorized AND No transaction has started yet. The Charging Station SHALL start a transaction and send a TransactionEventRequest (eventType = Started) to the CSMS.",
+    "page": 139,
+    "precondition": "TxStartPoint contains: Authorized AND The EV Driver is authorized AND No transaction has started yet"
+  },
+  "E01.FR.04": {
+    "definition": "TxStartPoint contains: DataSigned AND The Charging Station has a meter that can sign measured values AND Configuration Variable: SampledDataSignReadings set to true AND The Charging Station has retrieved a signed meter value AND No transaction has started yet on this EVSE. The Charging Station SHALL start a transaction and send a TransactionEventRequest (eventType = Started) to the CSMS.",
+    "page": 140,
+    "precondition": "TxStartPoint contains: DataSigned AND The Charging Station has a meter that can sign measured values AND Configuration Variable: SampledDataSignReadings set to true AND The Charging Station has retrieved a signed meter value AND No transaction has started yet on this EVSE"
+  },
+  "E01.FR.05": {
+    "definition": "TxStartPoint contains: PowerPathClosed AND The EV Driver is authorized AND The Charging Station has connection with the EV AND No transaction has started yet on this EVSE. The Charging Station SHALL start a transaction and send a TransactionEventRequest (eventType = Started) to the CSMS.",
+    "page": 140,
+    "precondition": "TxStartPoint contains: PowerPathClosed AND The EV Driver is authorized AND The Charging Station has connection with the EV AND No transaction has started yet on this EVSE"
+  },
+  "E01.FR.06": {
+    "definition": "TxStartPoint contains: EnergyTransfer AND Energy flow starts AND No transaction has started yet on this EVSE The Charging Station SHALL start a transaction and send a TransactionEventRequest (eventType = Started) to the CSMS.",
+    "page": 140,
+    "precondition": "TxStartPoint contains: EnergyTransfer AND Energy flow starts AND No transaction has started yet on this EVSE"
+  },
+  "E01.FR.07": {
+    "definition": "When a TransactionEventRequest has to be created The Charging Station SHALL set the message\u2019s seqNo field as specified in Sequence Number Generation.",
+    "page": 140,
+    "precondition": "When a TransactionEventRequest has to be created"
+  },
+  "E01.FR.11": {
+    "definition": "The CSMS SHALL verify the validity of the identifier in TransactionEventRequest.",
+    "page": 140,
+    "precondition": "E01.FR.10"
+  },
+  "E01.FR.12": {
+    "definition": "The CSMS SHALL send a TransactionEventResponse that includes in idTokenInfo an authorization status value and the groupIdToken if one exists for the idToken.",
+    "page": 140,
+    "precondition": "E01.FR.11"
+  },
+  "E02.FR.02": {
+    "definition": "The TransactionEventRequest(eventType=Started) must contain the meter values that have been configured in SampledDataCtrlr.TxStartedMeasurands.",
+    "page": 132,
+    "precondition": "E02.FR.01"
+  },
+  "E03.FR.02": {
+    "definition": "The field idToken is provided once in the TransactionEventRequest that occurs when the authorization of the transaction has been ended.",
+    "page": 132,
+    "precondition": "E03.FR.01"
+  },
+  "E03.FR.04": {
+    "definition": "The field reservationId is only provided in the first TransactionEventRequest that occurs when the transaction has been authorized by the idToken for which a reservation existed in the charging station.",
+    "page": 132,
+    "precondition": ""
+  },
+  "E03.FR.05": {
+    "definition": "The stoppedReason must be provided in the TransactionEventRequest(eventType=Ended), unless the value is Local, in which case it may be omitted.",
+    "page": 132,
+    "precondition": ""
+  },
+  "E06.FR.01": {
+    "definition": "TxStopPoint contains: ParkingBayOccupancy AND Parking Bay Detector no longer detects the \"EV\" The Charging Station SHALL stop the transaction and send a TransactionEventRequest (eventType = Ended) to the CSMS.",
+    "page": 159,
+    "precondition": "TxStopPoint contains: ParkingBayOccupancy AND Parking Bay Detector no longer detects the \"EV\""
+  },
+  "E06.FR.02": {
+    "definition": "TxStopPoint contains: EVConnected AND Connection between Charging Station and EV is lost. The Charging Station SHALL stop the transaction and send a TransactionEventRequest (eventType = Ended) to the CSMS.",
+    "page": 159,
+    "precondition": "TxStopPoint contains: EVConnected AND Connection between Charging Station and EV is lost."
+  },
+  "E06.FR.03": {
+    "definition": "TxStopPoint contains: Authorized AND EV Driver is authorized to stop a transaction. The Charging Station SHALL stop the transaction and send a TransactionEventRequest (eventType = Ended) to the CSMS.",
+    "page": 159,
+    "precondition": "TxStopPoint contains: Authorized AND EV Driver is authorized to stop a transaction."
+  },
+  "E06.FR.04": {
+    "definition": "TxStopPoint contains: Authorized AND CSMS returns a non-valid idTokenInfo in a TransactionEventResponse. The Charging Station SHALL stop the transaction and send a TransactionEventRequest (eventType = Ended) to the CSMS. See use case E05 - Start Transaction - Id not Accepted.",
+    "page": 159,
+    "precondition": "TxStopPoint contains: Authorized AND CSMS returns a non-valid idTokenInfo in a TransactionEventResponse"
+  },
+  "E06.FR.06": {
+    "definition": "TxStopPoint contains: PowerPathClosed AND ( Connection between Charging Station and EV is lost OR Authorization has ended or idToken is deauthorized ) The Charging Station SHALL stop the transaction and send a TransactionEventRequest (eventType = Ended) to the CSMS.",
+    "page": 159,
+    "precondition": "TxStopPoint contains: PowerPathClosed AND ( Connection between Charging Station and EV is lost OR Authorization has ended or idToken is deauthorized )"
+  },
+  "E06.FR.07": {
+    "definition": "TxStopPoint contains: EnergyTransfer AND Energy transfer stops The Charging Station SHALL stop the transaction and send a TransactionEventRequest (eventType = Ended) to the CSMS.",
+    "page": 159,
+    "precondition": "TxStopPoint contains: EnergyTransfer AND Energy transfer stops"
+  },
+  "E07.FR.03": {
+    "definition": "When a transaction is locally stopped by idToken, the Charging Station sends a TransactionEventRequest(eventType=Ended, triggerReason=StopAuthorized).",
+    "page": 150,
+    "precondition": ""
+  },
+  "E10.FR.01": {
+    "definition": "If StopTxOnEVSideDisconnect = false AND Cable not permanently attached The Connector SHALL remain locked at the Charging Station until the EV Driver presents the IdToken.",
+    "page": 172,
+    "precondition": "If StopTxOnEVSideDisconnect = false AND Cable not permanently attached"
+  },
+  "E14.FR.02": {
+    "definition": "The Charging Station receives a GetTransactionStatusRequest with a transactionId AND The transaction with that transactionId has not stopped yet The Charging Station\u2019s response SHALL have ongoingIndicator = true. E. Transactions",
+    "page": 180,
+    "precondition": "The Charging Station receives a GetTransactionStatusRequest with a transactionId AND The transaction with that transactionId has not stopped yet"
+  },
+  "E14.FR.03": {
+    "definition": "The Charging Station receives a GetTransactionStatusRequest with a transactionId AND The transaction with that transactionId has stopped The Charging Station\u2019s response SHALL have ongoingIndicator = false.",
+    "page": 181,
+    "precondition": "The Charging Station receives a GetTransactionStatusRequest with a transactionId AND The transaction with that transactionId has stopped"
+  },
+  "E14.FR.04": {
+    "definition": "The Charging Station receives a GetTransactionStatusRequest with a transactionId AND It has transaction-related messages to be delivered about the transaction with that transactionId The Charging Station\u2019s response SHALL have messagesInQueue = true.",
+    "page": 181,
+    "precondition": "The Charging Station receives a GetTransactionStatusRequest with a transactionId AND It has transaction-related messages to be delivered about the transaction with that transactionId"
+  },
+  "E14.FR.05": {
+    "definition": "The Charging Station receives a GetTransactionStatusRequest with a transactionId AND It has no transaction-related messages to be delivered about the transaction with that transactionId The Charging Station\u2019s response SHALL have messagesInQueue = false.",
+    "page": 181,
+    "precondition": "The Charging Station receives a GetTransactionStatusRequest with a transactionId AND It has no transaction-related messages to be delivered about the transaction with that transactionId"
+  },
+  "E14.FR.06": {
+    "definition": "The Charging Station receives a GetTransactionStatusRequest without a transactionId The Charging Station\u2019s response SHALL NOT have ongoingIndicator set.",
+    "page": 181,
+    "precondition": "The Charging Station receives a GetTransactionStatusRequest without a transactionId"
+  },
+  "E14.FR.07": {
+    "definition": "The Charging Station receives a GetTransactionStatusRequest without a transactionId AND It has transaction-related messages to be delivered The Charging Station\u2019s response SHALL have messagesInQueue = true.",
+    "page": 181,
+    "precondition": "The Charging Station receives a GetTransactionStatusRequest without a transactionId AND It has transaction-related messages to be delivered"
+  },
+  "E14.FR.08": {
+    "definition": "The Charging Station receives a GetTransactionStatusRequest without a transactionId AND It has no transaction-related messages to be delivered. The Charging Station's response SHALL have messagesInQueue = false.",
+    "page": 181,
+    "precondition": "The Charging Station receives a GetTransactionStatusRequest without a transactionId AND It has no transaction-related messages to be delivered"
+  },
+  "F01.FR.01": {
+    "definition": "Charging Station receives a RequestStartTransactionRequest AND ( AuthorizeRemoteStart = true AND idToken.type is NOT Central or NoAuthorization ) The Charging Station SHALL behave as if in response to a local action at the Charging Station to allow energy transfer after successful",
+    "page": 186,
+    "precondition": "Charging Station receives a RequestStartTransactionRequest AND (AuthorizeRemoteStart = true AND idToken.type is NOT Central or NoAuthorization)"
+  },
+  "F01.FR.02": {
+    "definition": "Charging Station receives a RequestStartTransactionRequest AND ( AuthorizeRemoteStart = false OR idToken.type is Central or NoAuthorization ) The Charging Station SHALL allow energy transfer for the IdToken given in RequestStartTransactionRequest message without",
+    "page": 187,
+    "precondition": "Charging Station receives a RequestStartTransactionRequest AND (AuthorizeRemoteStart = false OR idToken.type is Central or NoAuthorization)"
+  },
+  "F01.FR.08": {
+    "definition": "The CSMS MAY include a ChargingProfile in the RequestStartTransactionRequest.",
+    "page": 187,
+    "precondition": ""
+  },
+  "F01.FR.09": {
+    "definition": "F01.FR.08 AND The purpose of this ChargingProfile SHALL be set to TxProfile.",
+    "page": 177,
+    "precondition": "F01.FR.08"
+  },
+  "F01.FR.11": {
+    "definition": "F01.FR.08 AND The transactionId in the ChargingProfile SHALL NOT be set.",
+    "page": 177,
+    "precondition": "F01.FR.08"
+  },
+  "F02.FR.01": {
+    "definition": "The remoteStartId must be sent in the next TransactionEventRequest after the RequestStartTransactionRequest with the same remoteStartId.",
+    "page": 133,
+    "precondition": "When a transaction is started as a result of a RequestStartTransactionRequest."
+  },
+  "F03.FR.01": {
+    "definition": "When the CSMS receives a remote stop transaction trigger (For example when terminating using a smartphone app, exceeding a (non local) prepaid credit.) The CSMS SHALL send a RequestStopTransactionRequest to the Charging Station with the transactionId of the transaction.",
+    "page": 195,
+    "precondition": "When the CSMS receives a remote stop transaction trigger (For example when terminating using a smartphone app, exceeding a (non local) prepaid credit.)"
+  },
+  "F03.FR.09": {
+    "definition": "When sending a TransactionEventRequest The Charging Station SHALL set the triggerReason to inform the CSMS about what triggered the event. What reason to use is described in the description of TriggerReasonEnumType.",
+    "page": 196,
+    "precondition": "When sending a TransactionEventRequest"
+  },
+  "F03.FR.10": {
+    "definition": "The Charging Station SHALL unlock the connector when receiving RequestStopTransactionRequest.",
+    "page": 196,
+    "precondition": ""
+  },
+  "F06.FR.01": {
+    "definition": "In the TriggerMessageRequest message, the CSMS SHALL indicate which message(s) it wishes to receive.",
+    "page": 201,
+    "precondition": ""
+  },
+  "F06.FR.02": {
+    "definition": "The requested message SHALL be leading. If the specified evseId is not relevant to the message, it SHALL be ignored. In such cases the requested message SHALL still be sent.",
+    "page": 201,
+    "precondition": "F06.FR.01. For every such requested message."
+  },
+  "F06.FR.08": {
+    "definition": "When the Charging Station receives a TriggerMessageRequest with a requestedMessage that it has not implemented The Charging Station SHALL respond with TriggerMessageResponse with status NotImplemented.",
+    "page": 201,
+    "precondition": "When the Charging Station receives a TriggerMessageRequest with a requestedMessage that it has not implemented"
+  },
+  "F06.FR.13": {
+    "definition": "When sending a TriggerMessageRequest with requestedMessage set to StatusNotification, the CSMS SHALL include the evse field. StatusNotification messages can only be sent at connector level.",
+    "page": 202,
+    "precondition": "When sending a TriggerMessageRequest with requestedMessage set to: StatusNotification"
+  },
+  "G05.FR.03": {
+    "definition": "The CSMS SHALL respond with a NotifyEventResponse.",
+    "page": 213,
+    "precondition": "G05.FR.02"
+  },
+  "I02.FR.01": {
+    "definition": "The CSMS SHALL send either a CostUpdatedRequest at a relevant interval/moment or return the running cost in a TransactionEventResponse. This might depend on the charging speed, running cost, etc.",
+    "page": 230,
+    "precondition": ""
+  },
+  "I03.FR.02": {
+    "definition": "Charging Station was online when transaction stopped The Charging Station SHALL display the total cost to the EV Driver.",
+    "page": 231,
+    "precondition": "I03.FR.01 AND When Total Cost is known to the CSMS."
+  },
+  "J01.FR.18": {
+    "definition": "When CSMS receives a MeterValuesRequest CSMS SHALL respond with MeterValuesResponse. Failing to respond with MeterValuesResponse might cause the Charging Station to try the same message again.",
+    "page": 241,
+    "precondition": "When CSMS receives a MeterValuesRequest"
+  },
+  "J01.FR.21": {
+    "definition": "AlignedDataSignReadings is true The Charging Station SHALL retrieve signed meter values from components that support data signing and put them in the signedMeterValue field.",
+    "page": 242,
+    "precondition": "AlignedDataSignReadings is true"
+  },
+  "J02.FR.19": {
+    "definition": "When CSMS receives a TransactionEventRequest CSMS SHALL respond with TransactionEventResponse. Failing to respond with TransactionEventRespon se might cause the Charging Station to try the same message",
+    "page": 245,
+    "precondition": "When CSMS receives a TransactionEventRequest"
+  },
+  "J02.FR.21": {
+    "definition": "SampledDataSignReadings is true The Charging Station SHALL retrieve signed meter values from components that support data signing and put them in the signedMeterValue field.",
+    "page": 245,
+    "precondition": "SampledDataSignReadings is true"
+  },
+  "K01.FR.03": {
+    "definition": "The CSMS SHALL include the transactionId in the SetChargingProfileRequest when setting a TxProfile. The transactionId is used to match the profile to a specific transaction.",
+    "page": 257,
+    "precondition": ""
+  },
+  "K01.FR.31": {
+    "definition": "The startPeriod of the first chargingSchedulePeriod in a chargingSchedule SHALL always be 0.",
+    "page": 259,
+    "precondition": ""
+  },
+  "K01.FR.38": {
+    "definition": "When chargingProfilePurpose = ChargingStationMaxPr ofile chargingProfileKind SHALL NOT be Relative",
+    "page": 260,
+    "precondition": "When chargingProfilePurpose = ChargingStationMaxProfile"
+  },
+  "K05.FR.02": {
+    "definition": "When receiving a GetChargingProfilesRequest, the Charging Station SHALL respond with GetChargingProfilesResponse and send ReportChargingProfilesRequest messages.",
+    "page": 269,
+    "precondition": "K05.FR.01"
+  },
+  "K08.FR.01": {
+    "definition": "The CSMS MAY request the Charging Station to report the CompositeSchedule by sending GetCompositeScheduleRequest.",
+    "page": 276,
+    "precondition": ""
+  },
+  "K09.FR.03": {
+    "definition": "The CSMS SHALL specify in chargingProfile criteria in GetChargingProfilesRequest either: - a (list of) chargingProfileId(s) OR - one or more of the fields stackLevel, chargingLimitSource, chargingProfilePurpose. These fields are filter values of equal importance, but because a chargingProfileId uniquely identifies a",
+    "page": 278,
+    "precondition": ""
+  },
+  "K10.FR.02": {
+    "definition": "The CSMS SHALL either specify a chargingProfile.id OR include one or more of the fields stackLevel, evseId and chargingProfilePurpose in the ClearChargingProfileRequest to specify which Charging Profiles need to be cleared.",
+    "page": 279,
+    "precondition": ""
+  },
+  "K15.FR.02": {
+    "definition": "In response to a NotifyEVChargingNeedsRequest the CSMS SHALL send a NotifyEVChargingNeedsResponse.",
+    "page": 289,
+    "precondition": "K15.FR.01"
+  },
+  "K15.FR.03": {
+    "definition": "If the CSMS is able to provide a charging schedule, it SHALL indicate this by setting the status field in the NotifyEVChargingNeedsResponse to Accepted.",
+    "page": 289,
+    "precondition": "K15.FR.02"
+  },
+  "K15.FR.05": {
+    "definition": "If the CSMS is able to provide a charging schedule; but needs processing time, it SHALL indicate this by setting the status field in the NotifyEVChargingNeedsResponse to Processing. The Charging Station does not have to wait for the SetChargingProfileRequest. CSMS will send it later and trigger a renegotiation as per use case K16.",
+    "page": 289,
+    "precondition": "K15.FR.02"
+  },
+  "K15.FR.07": {
+    "definition": "AND EV returns a charging profile Charging Station SHALL verify that provided charging profile is within boundaries of the ChargingSchedule from CSMS. In ISO 15118 EV can sent its charging profile as part of PowerDeliveryReq.",
+    "page": 290,
+    "precondition": "K15.FR.03 or K15.FR.05"
+  },
+  "K15.FR.11": {
+    "definition": "AND EV charging profile is within limits of CSMS ChargingSchedule CSMS responds with NotifyEVChargingScheduleResponse with status Accepted to Charging Station. Note: Already checked by Charging Station, but CSMS does its own check.",
+    "page": 290,
+    "precondition": "K15.FR.10 AND EV charging profile is within limits of CSMS ChargingSchedule"
+  },
+  "K15.FR.12": {
+    "definition": "AND EV charging profile is NOT within limits of CSMS ChargingSchedule CSMS responds with NotifyEVChargingScheduleResponse with status Rejected to Charging Station.",
+    "page": 290,
+    "precondition": "K15.FR.10 AND EV charging profile is NOT within limits of CSMS ChargingSchedule"
+  },
+  "K15.FR.13": {
+    "definition": "CSMS starts new renegotiation as per use case K16.",
+    "page": 290,
+    "precondition": "K15.FR.12"
+  },
+  "K16.FR.06": {
+    "definition": "AND EV charging profile is within limits of CSMS ChargingSchedule CSMS responds with NotifyEVChargingScheduleResponse with status Accepted to Charging Station. Note: Already checked by Charging Station, but CSMS does its own check.",
+    "page": 293,
+    "precondition": "K16.FR.05 AND EV charging profile is within limits of CSMS ChargingSchedule"
+  },
+  "K16.FR.07": {
+    "definition": "AND EV charging profile is NOT within limits of CSMS ChargingSchedule CSMS responds with NotifyEVChargingScheduleResponse with status Rejected to Charging Station.",
+    "page": 293,
+    "precondition": "K16.FR.05 AND EV charging profile is NOT within limits of CSMS ChargingSchedule"
+  },
+  "K16.FR.08": {
+    "definition": "CSMS starts new renegotiation as per use case K16.",
+    "page": 293,
+    "precondition": "K16.FR.07"
+  },
+  "K16.FR.12": {
+    "definition": "AND Charging Station sends a NotifyEVChargingNeed sRequest The CSMS SHALL send a SetChargingProfileRequest. This situation is not desirable, because charging profile will likely be the same as in",
+    "page": 293,
+    "precondition": "K16.FR.09 AND Charging Station sends a NotifyEVChargingNeedsRequest"
+  },
+  "K17.FR.02": {
+    "definition": "In response to a NotifyEVChargingNeedsRequest the CSMS SHALL send a NotifyEVChargingNeedsResponse.",
+    "page": 295,
+    "precondition": "K17.FR.01"
+  },
+  "K17.FR.03": {
+    "definition": "K17.FR.02 AND If the CSMS is able to provide a charging schedule now CSMS SHALL indicate this by setting the status field in the NotifyEVChargingNeedsResponse to 'Accepted'.",
+    "page": 295,
+    "precondition": "K17.FR.02 AND If the CSMS is able to provide a charging schedule now"
+  },
+  "K17.FR.05": {
+    "definition": "K17.FR.02 AND If the CSMS is able to provide a charging schedule, but needs processing time CSMS SHALL indicate this by setting the status field in the NotifyEVChargingNeedsResponse to 'Processing'.",
+    "page": 295,
+    "precondition": "K17.FR.02 AND If the CSMS is able to provide a charging schedule, but needs processing time"
+  },
+  "K17.FR.07": {
+    "definition": "AND EV returns a charging profile Charging Station SHALL verify that provided charging profile is within boundaries of the ChargingSchedule from CSMS. In ISO 15118 EV can sent its charging profile as part of PowerDeliveryReq.",
+    "page": 295,
+    "precondition": "K17.FR.03 or K17.FR.05"
+  },
+  "K17.FR.11": {
+    "definition": "AND EV charging profile is within limits of CSMS ChargingSchedule CSMS responds with NotifyEVChargingScheduleResponse with status Accepted to Charging Station. Note: Already checked by Charging Station, but CSMS does its own check.",
+    "page": 295,
+    "precondition": "K17.FR.10 AND EV charging profile is within limits of CSMS ChargingSchedule"
+  },
+  "K17.FR.12": {
+    "definition": "AND EV charging profile is NOT within limits of CSMS ChargingSchedule CSMS responds with NotifyEVChargingScheduleResponse with status Rejected to Charging Station.",
+    "page": 295,
+    "precondition": "K17.FR.10 AND EV charging profile is NOT within limits of CSMS ChargingSchedule"
+  },
+  "K17.FR.13": {
+    "definition": "CSMS starts new renegotiation as per use case K16.",
+    "page": 295,
+    "precondition": "K17.FR.12"
+  },
+  "M01.FR.01": {
+    "definition": "Upon receiving an ISO 15118 CertificateInstallationReq The Charging Station SHALL forward the request to the CSMS using the Get15118EVCertificateRequest message with action = Install. The CSMS is responsible for forwarding it to the secondary actor which will process the CertificateUpdateRequest. This could",
+    "page": 324,
+    "precondition": "Upon receiving an ISO 15118 CertificateInstallationReq message with action = Install."
+  },
+  "M02.FR.01": {
+    "definition": "Upon receiving a CertificateUpdateReq the Charging Station SHALL forward the request to the CSMS using the Get15118EVCertificateRequest message with action = Update. The CSMS is responsible for forwarding it to the secondary actor which will process the CertificateUpdateRequest. This could be a contract certificate pool as",
+    "page": 325,
+    "precondition": ""
+  },
+  "M03.FR.01": {
+    "definition": "After receiving a GetInstalledCertificateIdsRequest The Charging Station SHALL respond with a GetInstalledCertificateIdsResponse.",
+    "page": 325,
+    "precondition": "After receiving a GetInstalledCertificateIdsRequest"
+  },
+  "M03.FR.02": {
+    "definition": "M03.FR.01 AND No certificate matching certificateType was found. The Charging Station SHALL respond with status NotFound.",
+    "page": 325,
+    "precondition": "M03.FR.01 AND No certificate matching certificateType was found"
+  },
+  "M03.FR.05": {
+    "definition": "When the Charging Station receives a GetInstalledCertificateIdsRequest with certificateType V2GCertificateChain, the Charging Station SHALL include the hash data for each installed certificate belonging to a V2G certificate chain. Sub CA certificates SHALL be placed as a childCertificate under the V2G Charging Station certificate.",
+    "page": 326,
+    "precondition": "When the Charging Station receives a GetInstalledCertificateIdsRequest with certificateType V2GCertificateChain"
+  },
+  "M04.FR.01": {
+    "definition": "After receiving a DeleteCertificateRequest The Charging Station SHALL respond with a DeleteCertificateResponse.",
+    "page": 326,
+    "precondition": "After receiving a DeleteCertificateRequest"
+  },
+  "M04.FR.07": {
+    "definition": "When deleting a certificate The CSMS SHALL use the same hashAlgorithm as the Charging Station uses to report the certificateHashData for the certificate in the GetInstalledCertificateIdsResponse. This ensures CSMS uses a hashAlgorithm that is supported by the Charging Station.",
+    "page": 327,
+    "precondition": "When deleting a certificate"
+  },
+  "M05.FR.01": {
+    "definition": "After receiving an InstallCertificateRequest The Charging Station SHALL attempt to install the certificate and respond with an InstallCertificateResponse.",
+    "page": 328,
+    "precondition": "After receiving an InstallCertificateRequest"
+  },
+  "M05.FR.03": {
+    "definition": "M05.FR.01 AND The installation failed. The Charging Station SHALL respond with InstallCertificateResponse with status Failed.",
+    "page": 328,
+    "precondition": "M05.FR.01 AND The installation failed"
+  },
+  "M06.FR.01": {
+    "definition": "After receiving a GetCertificateStatusRequest The CSMS SHALL respond with a GetCertificateStatusResponse.",
+    "page": 330,
+    "precondition": "After receiving a GetCertificateStatusRequest"
+  },
+  "M06.FR.02": {
+    "definition": "The CSMS SHALL include the OCSP response data in the OCSPResult field in the GetCertificateStatusResponse.",
+    "page": 330,
+    "precondition": "M06.FR.01 AND The CSMS was successful in retrieving the OCSP certificate status"
+  },
+  "M06.FR.03": {
+    "definition": "When receiving GetInstalledCertificateIdsRequest, the Charging Station SHALL respond with GetInstalledCertificateIdsResponse containing certificate information.",
+    "page": 330,
+    "precondition": "M06.FR.02"
+  },
+  "M06.FR.08": {
+    "definition": "The CSMS SHALL format the response data according to OCSPResponse as defined in IETF RFC 6960, formatted according to ASN.1 [X.680].",
+    "page": 330,
+    "precondition": ""
+  },
+  "M06.FR.09": {
+    "definition": "The OCSPResponse data SHALL be DER encoded.",
+    "page": 330,
+    "precondition": ""
+  },
+  "N02.FR.05": {
+    "definition": "N02.FR.01 AND monitoringCriteria and componentVariables are NOT both absent.",
+    "page": 336,
+    "precondition": "N02.FR.01 AND monitoringCriteria and componentVariables are NOT both absent."
+  },
+  "N02.FR.10": {
+    "definition": "When the Charging Station receives a GetMonitoringReportRequest for supported monitoringCriteria OR without monitoringCriteria, the Charging Station SHALL send a GetMonitoringReportResponse with status Accepted.",
+    "page": 336,
+    "precondition": "When the Charging Station receives a GetMonitoringReportRequest with a combination of criteria which results in an empty result set."
+  },
+  "N03.FR.03": {
+    "definition": "N03.FR.01 AND When the Charging Station received a SetMonitoringBaseRequest with monitoringBase All.",
+    "page": 338,
+    "precondition": "N03.FR.01 AND When the Charging Station received a setMonitoringBaseRequest with monitoringBase All"
+  },
+  "N03.FR.04": {
+    "definition": "N03.FR.01 AND When the Charging Station received a SetMonitoringBaseRequest with monitoringBase FactoryDefault.",
+    "page": 339,
+    "precondition": "N03.FR.01 AND When the Charging Station received a setMonitoringBaseRequest with monitoringBase FactoryDefault"
+  },
+  "N03.FR.05": {
+    "definition": "N03.FR.01 AND When the Charging Station received a SetMonitoringBaseRequest with monitoringBase HardWiredOnly.",
+    "page": 339,
+    "precondition": "N03.FR.01 AND When the Charging Station received a setMonitoringBaseRequest with monitoringBase HardWiredOnly"
+  },
+  "N04.FR.01": {
+    "definition": "When the Charging Station receives a SetVariableMonitoringRequest with an X number of SetMonitoringData elements The Charging Station SHALL respond with an SetVariableMonitoringResponse with an equal (X) number of SetMonitoringResult elements, one for every SetMonitoringData element in the SetVariableMonitoringRequest.",
+    "page": 339,
+    "precondition": "When the Charging Station receives a SetVariableMonitoringRequest with an X number of SetMonitoringData elements"
+  },
+  "N04.FR.02": {
+    "definition": "Every SetMonitoringResult element in the SetVariableMonitoringResponse SHALL contain the same component and variable combination as one of the SetMonitoringData elements in the SetVariableMonitoringRequest.",
+    "page": 339,
+    "precondition": "N04.FR.01"
+  },
+  "N04.FR.17": {
+    "definition": "When the CSMS sends a SetVariableMonitoringRequest with type Delta for a Variable that is NOT of a numeric type It is RECOMMENDED to use a value of 1. value is irrelevant for non-numeric types (e.g. any type except decimal or integer), since the monitor is triggered by",
+    "page": 341,
+    "precondition": "When the CSMS sends a SetVariableMonitoringRequest with type Delta for a Variable that is NOT of a numeric type"
+  },
+  "N05.FR.01": {
+    "definition": "When the Charging Station accepts a setMonitoringLevelRequest The Charging Station SHALL send a setMonitoringLevelResponse with Accepted.",
+    "page": 342,
+    "precondition": "When the Charging Station accepts a setMonitoringLevelRequest"
+  },
+  "N05.FR.02": {
+    "definition": "When the Charging Station receives a setMonitoringLevelRequest for a severity that is out of range The Charging Station SHALL send a setMonitoringLevelResponse with Rejected .",
+    "page": 342,
+    "precondition": "When the Charging Station receives a setMonitoringLevelRequest for a severity that is out of range"
+  },
+  "N06.FR.04": {
+    "definition": "The CSMS SHALL NOT put more id elements in a ClearVariableMonitoringRequest than reported by the Charging Station via: ItemsPerMessageClearVariableMonitoring and BytesPerMessageClearVariableMonitoring.",
+    "page": 343,
+    "precondition": ""
+  },
+  "N07.FR.03": {
+    "definition": "When the CSMS receives an NotifyEventRequest The CSMS SHALL respond with an empty NotifyEventResponse.",
+    "page": 344,
+    "precondition": "When the CSMS receives an NotifyEventRequest"
+  },
+  "N08.FR.02": {
+    "definition": "When the CSMS receives a NotifyEventRequest The CSMS SHALL respond with an empty NotifyEventResponse.",
+    "page": 346,
+    "precondition": "When the CSMS receives an NotifyEventRequest"
+  },
+  "N09.FR.01": {
+    "definition": "When the CSMS wants to retrieve CustomerInformation from the Charging Station. The report flag in the CustomerInformationRequest SHALL be set to true.",
+    "page": 349,
+    "precondition": "When the CSMS wants to retrieve CustomerInformation from the Charging Station."
+  },
+  "N09.FR.04": {
+    "definition": "The CSMS SHALL include a reference to a customer by including either an idToken, customerCertificate or customerIdentifier in the CustomerInformationRequest.",
+    "page": 349,
+    "precondition": ""
+  },
+  "N10.FR.02": {
+    "definition": "When the Customer referred to by the customer identifier is present in the Local Authorization List of a Charging Station The CSMS SHALL update the Local Authorization List using the SendLocalListRequest (see D01 - Send Local Authorization List). To prevent problems with Local Authorization List versions.",
+    "page": 350,
+    "precondition": "When the Customer referred to by the customer identifier is present in the Local Authorization List of a Charging Station"
+  },
+  "N10.FR.08": {
+    "definition": "The CSMS SHALL include a reference to a customer by including either an idToken, customerCertificate or customerIdentifier in the CustomerInformationRequest.",
+    "page": 351,
+    "precondition": ""
+  },
+  "P02.FR.06": {
+    "definition": "If the recipient of the request has no implementation for the specific vendorId, the recipient SHALL return a status UnknownVendor.",
+    "page": 368,
+    "precondition": "If the recipient of the request has no implementation for the specific vendorId."
+  },
+  "P02.FR.07": {
+    "definition": "Upon receipt of DataTransferRequest and in case of a messageId mismatch (if used). The recipient SHALL return status UnknownMessageId.",
+    "page": 369,
+    "precondition": "Upon receipt of DataTransferRequest and in case of a messageId mismatch (if used)."
+  },
+  "O01.FR.04": {
+    "definition": "When a CSMS sends a message to a Charging Station that does not belong to a transaction, the field: transactionId in the message field SHALL be omitted.",
+    "page": 345,
+    "precondition": ""
+  },
+  "O01.FR.05": {
+    "definition": "The CSMS MAY include a startTime and endTime when setting a message.",
+    "page": 345,
+    "precondition": ""
+  },
+  "L01.FR.01": {
+    "definition": "Whenever the Charging Station enters a new state in the firmware update process, the Charging Station SHALL send a FirmwareStatusNotificationRequest message to the CSMS with this new status.",
+    "page": 292,
+    "precondition": "Whenever the Charging Station enters a new state in the firmware update process."
+  },
+  "L01.FR.11": {
+    "definition": "For security purposes the CSMS SHALL include the Firmware Signing certificate in the UpdateFirmwareRequest.",
+    "page": 293,
+    "precondition": ""
+  },
+  "L01.FR.15": {
+    "definition": "When a Charging Station needs to reboot before installing the downloaded firmware, the Charging Station SHALL send a FirmwareStatusNotificationRequest with status InstallRebooting, before rebooting.",
+    "page": 294,
+    "precondition": "When a Charging Station needs to reboot before installing the downloaded firmware."
+  },
+  "L01.FR.24": {
+    "definition": "When a Charging Station is installing new Firmware OR is going to install new Firmware, but has received an UpdateFirmware command to install it at a later time AND the Charging Station receives a new UpdateFirmwareRequest, the Charging Station SHOULD cancel the ongoing firmware update AND respond with status AcceptedCanceled.",
+    "page": 294,
+    "precondition": "When a Charging Station is installing new Firmware OR is going to install new Firmware, but has received an UpdateFirmware command to install it at a later time AND the Charging Station receives a new UpdateFirmwareRequest"
+  },
+  "L01.FR.27": {
+    "definition": "L01.FR.24 AND the Charging Station is unable to cancel the firmware installation. The Charging Station MAY respond with status = Rejected.",
+    "page": 294,
+    "precondition": "L01.FR.24 AND the Charging Station is unable to cancel the firmware installation"
+  }
+}

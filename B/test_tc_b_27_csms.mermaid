@@ -1,0 +1,19 @@
+sequenceDiagram
+    participant CS as Charging Station (OCTT)
+    participant CSMS as CSMS (System Under Test)
+
+    Note over CS,CSMS: Test Case: TC_B_27_CSMS
+    Note over CS,CSMS: Reset EVSE - With Ongoing Transaction - Immediate
+    Note over CS,CSMS: Reusable State: EnergyTransferStarted
+
+    Note over CSMS: Manual Action: Request CSMS to reboot<br/>charging EVSE with status Immediate
+
+    CSMS->>CS: 1. ResetRequest
+    Note left of CSMS: type: Immediate<br/>evseID: <Configured evseId>
+
+    CS-->>CSMS: 2. ResetResponse (status: Accepted)
+
+    CS->>CSMS: 3. TransactionEventRequest
+    Note right of CS: eventType: Ended<br/>triggerReason: ResetCommand<br/>chargingState: EVConnected<br/>stoppedReason: ImmediateReset
+
+    CSMS-->>CS: 4. TransactionEventResponse

@@ -1,0 +1,27 @@
+sequenceDiagram
+    participant CS as Charging Station (OCTT)
+    participant CSMS as CSMS (System Under Test)
+
+    Note over CS,CSMS: Test Case: TC_N_03_CSMS
+    Note over CS,CSMS: Get Monitoring Report - with component criteria and component/variable
+
+    Note over CS,CSMS: Request 1: DeltaMonitoring + EVSE/AvailabilityState -> EmptyResultSet
+
+    CSMS->>CS: 1. GetMonitoringReportRequest
+    Note left of CSMS: monitoringCriteria = DeltaMonitoring<br/>componentVariable[0].component.name = "EVSE"<br/>componentVariable[0].component.evse.id = configured<br/>componentVariable[0].variable.name = "AvailabilityState"
+
+    CS-->>CSMS: 2. GetMonitoringReportResponse
+    Note right of CS: status = EmptyResultSet
+
+    Note over CS,CSMS: Request 2: ThresholdMonitoring + ChargingStation/Power -> Accepted
+
+    CSMS->>CS: 3. GetMonitoringReportRequest
+    Note left of CSMS: monitoringCriteria = ThresholdMonitoring<br/>componentVariable[0].component.name = "ChargingStation"<br/>componentVariable[0].variable.name = "Power"
+
+    CS-->>CSMS: 4. GetMonitoringReportResponse
+    Note right of CS: status = Accepted
+
+    CS->>CSMS: 5. NotifyMonitoringReportRequest
+    Note right of CS: monitor data for<br/>ChargingStation/Power Threshold monitors
+
+    CSMS-->>CS: 6. NotifyMonitoringReportResponse

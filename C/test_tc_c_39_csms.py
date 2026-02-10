@@ -2,7 +2,12 @@
 Test case name      Authorization by GroupId - Success
 Test case Id        TC_C_39_CSMS
 Use case Id(s)      C09
-Requirement(s)      C09_FR_02, C09_FR_03
+Requirement(s)      C09.FR.02, C09.FR.03
+
+Requirement Details:
+    C09.FR.02: IdTokens that are part of the same group for authorization purposes SHALL have a common group identifier in the optional groupIdToken element in IdTokenInfo.
+    C09.FR.03: When a transaction has been authorized/started with a certain IdToken. An EV Driver with a different, valid IdToken, but with the same groupIdToken SHALL be authorized to stop the transaction.
+        Precondition: When a transaction has been authorized/started with a certain IdToken.
 System under test   CSMS
 
 Description         This test case covers how a Charging Station can authorize an action for an EV Driver based on GroupId
@@ -69,10 +74,14 @@ import asyncio
 import pytest
 import os
 
-from ocpp.v201.enums import AuthorizationStatusType, TriggerReasonType, TransactionEventType
+from ocpp.v201.enums import (
+    AuthorizationStatusEnumType as AuthorizationStatusType,
+    TriggerReasonEnumType as TriggerReasonType,
+    TransactionEventEnumType as TransactionEventType,
+)
 from ocpp.v201.call import TransactionEvent
 from ocpp.v201.datatypes import IdTokenType
-from mock_charge_point import MockChargePoint
+from tzi_charge_point import TziChargePoint
 from reusable_states.ev_connected_pre_session import ev_connected_pre_session
 from reusable_states.energy_transfer_started import energy_transfer_started
 from reusable_states.ev_connected_post_session import ev_connected_post_session
@@ -96,7 +105,7 @@ async def test_tc_c_39(connection):
     connector_id = 1
 
     assert connection.open
-    cp = MockChargePoint(BASIC_AUTH_CP, connection)
+    cp = TziChargePoint(BASIC_AUTH_CP, connection)
 
     start_task = asyncio.create_task(cp.start())
 
@@ -127,8 +136,8 @@ async def test_tc_c_39(connection):
         transaction_info={
             "transaction_id": transaction_id,
             "charging_state": "EVConnected",
-            "id_token": id_token,
         },
+        id_token=id_token,
         evse={
             "id": evse_id,
             "connector_id": connector_id
@@ -143,8 +152,8 @@ async def test_tc_c_39(connection):
     assert transaction_event_response_1.id_token_info.status == AuthorizationStatusType.accepted
     assert transaction_event_response_1.id_token_info.group_id_token.id_token == group_id
 
-    # 5. Execute Reusable State EnergyTransferStarted
-    await energy_transfer_started(cp, evse_id)
+    # 5. Execute Reusable State EnergyTransferStarted for the active transaction
+    await energy_transfer_started(cp, evse_id=evse_id, connector_id=connector_id, transaction_id=transaction_id)
 
     # 6. The OCTT sends an AuthorizeRequest with idToken.idToken <Configured valid_idtoken2_idtoken> idToken.type <Configured valid_idtoken2_type>
     authorization_response_2 = await cp.send_authorization_request(id_token=token_id_2, token_type=token_type_2)
@@ -168,8 +177,8 @@ async def test_tc_c_39(connection):
         transaction_info={
             "transaction_id": transaction_id,
             "charging_state": "Charging",
-            "id_token": IdTokenType(id_token=token_id_2, type=token_type_2),
         },
+        id_token=IdTokenType(id_token=token_id_2, type=token_type_2),
         evse={
             "id": evse_id,
             "connector_id": connector_id
@@ -185,8 +194,8 @@ async def test_tc_c_39(connection):
     assert transaction_event_response_2.id_token_info.group_id_token.id_token == group_id
 
     # 10. Execute Reusable State EVConnectedPostSession
-    await ev_connected_post_session(cp, evse_id=evse_id, connector_id=connector_id)
+    await ev_connected_post_session(cp, evse_id=evse_id, connector_id=connector_id, transaction_id=transaction_id)
 
     # 11. Execute Reusable State EVDisconnected
-    await ev_disconnected(cp, evse_id)
+    await ev_disconnected(cp, evse_id=evse_id, connector_id=connector_id, transaction_id=transaction_id)
     start_task.cancel()

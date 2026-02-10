@@ -1,0 +1,26 @@
+sequenceDiagram
+    participant CS as Charging Station (OCTT)
+    participant CSMS as CSMS (System Under Test)
+
+    Note over CS,CSMS: Test Case: TC_N_18_CSMS
+    Note over CS,CSMS: Clear Monitoring - Too many elements
+
+    CSMS->>CS: 1. GetVariablesRequest
+    Note left of CSMS: Component.name = MonitoringCtrlr<br/>Variable.name = ItemsPerMessage<br/>Variable.instance = ClearVariableMonitoring
+
+    CS-->>CSMS: 2. GetVariablesResponse
+    Note right of CS: attributeValue = 3
+
+    CSMS->>CS: 3. ClearVariableMonitoringRequest
+    Note left of CSMS: id list (<=ItemsPerMessage)
+
+    CS-->>CSMS: 4. ClearVariableMonitoringResponse
+    Note right of CS: clearMonitoringResult for each id
+
+    Note over CS,CSMS: Repeat steps 3-4 if more ids to clear
+
+    CSMS->>CS: 5. ClearVariableMonitoringRequest
+    Note left of CSMS: id list (<=ItemsPerMessage)
+
+    CS-->>CSMS: 6. ClearVariableMonitoringResponse
+    Note right of CS: clearMonitoringResult for each id

@@ -1,0 +1,12 @@
+sequenceDiagram
+    participant CS as Charging Station (OCTT)
+    participant CSMS as CSMS (System Under Test)
+
+    Note over CS,CSMS: Test Case: TC_N_16_CSMS
+    Note over CS,CSMS: Set Monitoring Level - Success
+
+    CSMS->>CS: 1. SetMonitoringLevelRequest
+    Note left of CSMS: severity = 4
+
+    CS-->>CSMS: 2. SetMonitoringLevelResponse
+    Note right of CS: status = Accepted

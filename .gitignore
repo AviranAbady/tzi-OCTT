@@ -457,3 +457,8 @@ $RECYCLE.BIN/
 # End of https://www.toptal.com/developers/gitignore/api/python,intellij,pycharm,visualstudiocode,linux,macos,windows
 
 .idea
+
+
+batch.sh
+tasks.txt
+tasks2.txt

@@ -1,0 +1,12 @@
+sequenceDiagram
+    participant CS as Charging Station (OCTT)
+    participant CSMS as CSMS (System Under Test)
+
+    Note over CS,CSMS: Test Case: TC_N_09_CSMS
+    Note over CS,CSMS: Set Variable Monitoring - Multiple elements
+
+    CSMS->>CS: 1. SetVariableMonitoringRequest
+    Note left of CSMS: setMonitoringData[0].value = 1<br/>setMonitoringData[0].type = Delta<br/>setMonitoringData[0].severity = 8<br/>setMonitoringData[0].component.name = EVSE<br/>setMonitoringData[0].component.evse.id = <configured><br/>setMonitoringData[0].variable.name = AvailabilityState<br/>setMonitoringData[1].value = 1<br/>setMonitoringData[1].type = Delta<br/>setMonitoringData[1].severity = 8<br/>setMonitoringData[1].component.name = ChargingStation<br/>setMonitoringData[1].variable.name = AvailabilityState
+
+    CS-->>CSMS: 2. SetVariableMonitoringResponse
+    Note right of CS: setMonitoringResult[0].status = Accepted<br/>setMonitoringResult[1].status = Accepted

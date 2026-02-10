@@ -1,0 +1,29 @@
+sequenceDiagram
+    participant CS as Charging Station (OCTT)
+    participant CSMS as CSMS (System Under Test)
+
+    Note over CS,CSMS: Test Case: TC_B_31_CSMS
+    Note over CS,CSMS: Cold Boot CS - Pending/Rejected - TriggerMessage
+    Note over CS,CSMS: Prerequisite: CSMS responds Pending or Rejected to BootNotification
+
+    CS->>CSMS: 1. BootNotificationRequest
+    Note right of CS: reason: PowerUp
+
+    CSMS-->>CS: 2. BootNotificationResponse
+    Note over CSMS: Validation: status Pending OR Rejected
+
+    CSMS->>CS: 3. TriggerMessageRequest
+    Note left of CSMS: requestedMessage: BootNotification
+
+    CS-->>CSMS: 4. TriggerMessageResponse (status: Accepted)
+
+    CS->>CSMS: 5. BootNotificationRequest
+    Note right of CS: reason: Triggered
+
+    CSMS-->>CS: 6. BootNotificationResponse
+    Note over CSMS: Validation: status must be Accepted
+
+    CS->>CSMS: 7. StatusNotificationRequest + NotifyEventRequest
+    Note right of CS: connectorStatus: Available
+
+    CSMS-->>CS: 8. Responses

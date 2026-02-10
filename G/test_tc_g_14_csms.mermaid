@@ -1,0 +1,32 @@
+sequenceDiagram
+    participant CS as Charging Station (OCTT)
+    participant CSMS as CSMS (System Under Test)
+
+    Note over CS,CSMS: Test Case: TC_G_14_CSMS
+    Note over CS,CSMS: Change Availability Charging Station - With ongoing transaction
+
+    Note over CS,CSMS: Before: State is EnergyTransferStarted
+
+    Note over CS,CSMS: Note: Request CSMS to change CS availability to Inoperative
+
+    CSMS->>CS: 1. ChangeAvailabilityRequest
+    Note left of CSMS: operationalStatus = Inoperative<br/>evseId = omit<br/>connectorId = omit
+
+    CS-->>CSMS: 2. ChangeAvailabilityResponse
+    Note right of CS: status = Scheduled
+
+    CS->>CSMS: 3. StatusNotificationRequest
+    Note right of CS: connectorStatus = Unavailable (unoccupied connectors)
+
+    CSMS-->>CS: 4. Responds accordingly
+
+    Note over CS,CSMS: Note: Wait for configured Transaction Duration
+
+    Note over CS,CSMS: 5. Execute Reusable State StopAuthorized
+    Note over CS,CSMS: 6. Execute Reusable State EVConnectedPostSession
+    Note over CS,CSMS: 7. Execute Reusable State EVDisconnected
+
+    CS->>CSMS: 8. StatusNotificationRequest
+    Note right of CS: connectorStatus = Unavailable
+
+    CSMS-->>CS: 9. Responds accordingly

@@ -1,0 +1,11 @@
+sequenceDiagram
+    participant CS as Charging Station (OCTT)
+    participant CSMS as Charging Station Management System
+
+    Note over CS,CSMS: TC_E_39 - Stop transaction options - Deauthorized - timeout
+    Note over CS,CSMS: Use case: E03, E06 | Requirements: E03.FR.04, E03.FR.05, E06.FR.04
+    Note over CS,CSMS: Before: Reusable State Authorized
+    Note over CS,CSMS: This step executes after <EVConnectionTimeout> expires
+
+    CS->>CSMS: TransactionEventRequest [eventType=Ended, triggerReason=EVConnectTimeout, stoppedReason=Timeout]
+    CSMS-->>CS: TransactionEventResponse

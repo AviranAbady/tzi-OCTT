@@ -1,0 +1,14 @@
+sequenceDiagram
+    participant CS as Charging Station (OCTT)
+    participant CSMS as CSMS (System Under Test)
+
+    Note over CS,CSMS: Test Case: TC_K_60_CSMS
+    Note over CS,CSMS: Set Charging Profile - TxProfile with<br/>ongoing transaction on the specified EVSE
+
+    Note over CS,CSMS: Reusable State: EnergyTransferStarted
+
+    CSMS->>CS: 1. SetChargingProfileRequest
+    Note left of CSMS: chargingProfilePurpose = TxProfile<br/>evseId = <Configured evseId><br/>transactionId = <Generated transactionId><br/>chargingProfileKind = Relative OR Absolute<br/>If Relative: startSchedule = omitted<br/>If Absolute: startSchedule = <Not omitted>
+
+    CS-->>CSMS: 2. SetChargingProfileResponse
+    Note right of CS: status = Accepted

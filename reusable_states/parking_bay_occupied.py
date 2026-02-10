@@ -29,11 +29,11 @@ Tool validations * Step 1:
 Post condition State is ParkingBayOccupied
 """
 from ocpp.v201.call import TransactionEvent
-from mock_charge_point import MockChargePoint
+from tzi_charge_point import TziChargePoint
 from utils import now_iso, generate_transaction_id
 
 
-async def parking_bay_occupied(cp: MockChargePoint, evse_id: int = 0, connector_id: int = 0):
+async def parking_bay_occupied(cp: TziChargePoint, evse_id: int = 0, connector_id: int = 0):
     event = TransactionEvent(trigger_reason='EVDetected',
                              transaction_info=dict(transaction_id=generate_transaction_id()),
                              evse=dict(id=evse_id, connectorId=connector_id),

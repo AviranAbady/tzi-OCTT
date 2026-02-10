@@ -1,0 +1,67 @@
+sequenceDiagram
+    participant CS as Charging Station (OCTT)
+    participant CSMS as CSMS (System Under Test)
+
+    Note over CS,CSMS: Test Case: TC_L_03_CSMS
+    Note over CS,CSMS: Secure Firmware Update - DownloadScheduled
+
+    CSMS->>CS: 1. UpdateFirmwareRequest
+    Note left of CSMS: requestId<br/>firmware.location<br/>firmware.retrieveDateTime (future)<br/>firmware.signingCertificate<br/>firmware.signature
+
+    CS-->>CSMS: 2. UpdateFirmwareResponse
+    Note right of CS: status = Accepted
+
+    CS->>CSMS: 3. FirmwareStatusNotificationRequest
+    Note right of CS: status = DownloadScheduled
+
+    CSMS-->>CS: 4. FirmwareStatusNotificationResponse
+
+    Note over CS,CSMS: Wait for retrieveDateTime
+
+    CS->>CSMS: 5. FirmwareStatusNotificationRequest
+    Note right of CS: status = Downloading
+
+    CSMS-->>CS: 6. FirmwareStatusNotificationResponse
+
+    CS->>CSMS: 7. FirmwareStatusNotificationRequest
+    Note right of CS: status = Downloaded
+
+    CSMS-->>CS: 8. FirmwareStatusNotificationResponse
+
+    CS->>CSMS: 9. FirmwareStatusNotificationRequest
+    Note right of CS: status = SignatureVerified
+
+    CSMS-->>CS: 10. FirmwareStatusNotificationResponse
+
+    CS->>CSMS: 11. FirmwareStatusNotificationRequest
+    Note right of CS: status = Installing
+
+    CSMS-->>CS: 12. FirmwareStatusNotificationResponse
+
+    CS->>CSMS: 13. FirmwareStatusNotificationRequest
+    Note right of CS: status = InstallRebooting
+
+    CSMS-->>CS: 14. FirmwareStatusNotificationResponse
+
+    Note over CS,CSMS: CS reboots
+
+    CS->>CSMS: 15. BootNotificationRequest
+    Note right of CS: reason = FirmwareUpdate
+
+    CSMS-->>CS: 16. BootNotificationResponse
+    Note left of CSMS: status = Accepted
+
+    CS->>CSMS: 17. StatusNotificationRequest
+    Note right of CS: connectorStatus = Available
+
+    CSMS-->>CS: 18. StatusNotificationResponse
+
+    CS->>CSMS: 17b. NotifyEventRequest
+    Note right of CS: trigger = Delta<br/>actualValue = "Available"<br/>component.name = "Connector"<br/>variable.name = "AvailabilityState"
+
+    CSMS-->>CS: 18b. NotifyEventResponse
+
+    CS->>CSMS: 19. FirmwareStatusNotificationRequest
+    Note right of CS: status = Installed
+
+    CSMS-->>CS: 20. FirmwareStatusNotificationResponse

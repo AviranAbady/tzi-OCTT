@@ -1,0 +1,108 @@
+"""
+TC_F_12 - Trigger message - MeterValues - All EVSE
+Use case: F06 | Requirements: F06.FR.01
+F06.FR.01: In the TriggerMessageRequest message, the CSMS SHALL indicate which message(s) it wishes to receive.
+System under test: CSMS
+
+Description:
+    The CSMS can request a Charging Station to send Charging Station-initiated messages. In the request
+    the CSMS indicates which message it wishes to receive.
+
+Purpose:
+    To verify if the CSMS is able to trigger the Charging Station to send a MeterValuesRequest for all
+    EVSE, using a TriggerMessageRequest.
+
+Main:
+    1. CSMS sends TriggerMessageRequest (requestedMessage=MeterValues)
+    2. CS responds with TriggerMessageResponse (status=Accepted)
+    3. CS sends MeterValuesRequest (evseId omitted, meterValue[0].sampledValue.context=Trigger)
+       Note: This step will be executed for every EVSE.
+    4. CSMS responds with MeterValuesResponse
+
+Tool validations:
+    * Step 1: TriggerMessageRequest
+      - requestedMessage must be MeterValues
+
+Configuration:
+    CSMS_ADDRESS              - WebSocket URL of the CSMS
+    BASIC_AUTH_CP             - Charge Point identifier
+    BASIC_AUTH_CP_PASSWORD    - Charge Point password
+    CONFIGURED_EVSE_ID        - EVSE id (default 1)
+    CSMS_ACTION_TIMEOUT       - Seconds to wait for CSMS action (default 30)
+"""
+import asyncio
+import logging
+import os
+import sys
+import time
+
+import pytest
+import websockets
+
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+from ocpp.v201.enums import (
+    RegistrationStatusEnumType,
+    ConnectorStatusEnumType,
+    MessageTriggerEnumType,
+)
+
+from tzi_charge_point import TziChargePoint
+from utils import get_basic_auth_headers
+
+logging.basicConfig(level=logging.INFO)
+
+CSMS_ADDRESS = os.environ.get('CSMS_ADDRESS', 'ws://localhost:9000')
+BASIC_AUTH_CP = os.environ.get('BASIC_AUTH_CP', 'CP_1')
+BASIC_AUTH_CP_PASSWORD = os.environ.get('BASIC_AUTH_CP_PASSWORD', '0123456789123456')
+EVSE_ID = int(os.environ.get('CONFIGURED_EVSE_ID', '1'))
+CSMS_ACTION_TIMEOUT = int(os.environ.get('CSMS_ACTION_TIMEOUT', '30'))
+
+
+@pytest.mark.asyncio
+async def test_tc_f_12():
+    """Trigger message - MeterValues - All EVSE."""
+    cp_id = BASIC_AUTH_CP
+    uri = f'{CSMS_ADDRESS}/{cp_id}'
+    headers = get_basic_auth_headers(cp_id, BASIC_AUTH_CP_PASSWORD)
+
+    ws = await websockets.connect(
+        uri=uri,
+        subprotocols=['ocpp2.0.1'],
+        extra_headers=headers,
+    )
+    time.sleep(0.5)
+
+    cp = TziChargePoint(cp_id, ws)
+    start_task = asyncio.create_task(cp.start())
+
+    # Boot and establish session
+    boot_response = await cp.send_boot_notification()
+    assert boot_response.status == RegistrationStatusEnumType.accepted
+
+    await cp.send_status_notification(1, ConnectorStatusEnumType.available, evse_id=EVSE_ID)
+
+    # Step 1-2: Wait for CSMS to send TriggerMessageRequest
+    await asyncio.wait_for(
+        cp._received_trigger_message.wait(),
+        timeout=CSMS_ACTION_TIMEOUT,
+    )
+
+    # Validate Step 1: TriggerMessageRequest content
+    assert cp._trigger_message_data == MessageTriggerEnumType.meter_values or \
+           cp._trigger_message_data == 'MeterValues', \
+        f"Expected requestedMessage=MeterValues, got {cp._trigger_message_data}"
+
+    # evse should not be specified (All EVSE)
+    # Step 3-4: CS sends MeterValuesRequest for every EVSE
+    # Per spec: "This step will be executed for every EVSE." - send for each EVSE with actual evseId
+    assert cp._trigger_message_evse is None, "Expected evse to be omitted for All EVSE trigger"
+    meter_response = await cp.send_meter_values(
+        evse_id=EVSE_ID,
+        sampled_values=[{'value': 0.0, 'context': 'Trigger'}],
+    )
+    assert meter_response is not None
+
+    logging.info("TC_F_12 completed successfully")
+    start_task.cancel()
+    await ws.close()

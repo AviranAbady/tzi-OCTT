@@ -1,0 +1,12 @@
+sequenceDiagram
+    participant CS as Charging Station (OCTT)
+    participant CSMS as Charging Station Management System
+
+    Note over CS,CSMS: TC_E_16 - Stop transaction options - Deauthorized - Invalid idToken
+    Note over CS,CSMS: Use case: E06(S3) | Requirements: E06.FR.04, E01.FR.11, E01.FR.12
+
+    CS->>CSMS: TransactionEventRequest [eventType=Started, triggerReason=Authorized, idToken=<invalid_idtoken>]
+    CSMS-->>CS: TransactionEventResponse [idTokenInfo.status=Invalid or Unknown]
+
+    CS->>CSMS: TransactionEventRequest [eventType=Ended, triggerReason=Deauthorized, stoppedReason=DeAuthorized]
+    CSMS-->>CS: TransactionEventResponse

@@ -1,0 +1,50 @@
+sequenceDiagram
+    participant CS as Charging Station (OCTT)
+    participant CSMS as CSMS (System Under Test)
+
+    Note over CS,CSMS: Test Case: TC_A_19_CSMS
+    Note over CS,CSMS: Upgrade Charging Station Security Profile - Accepted
+    Note over CS,CSMS: Prerequisite: Security profile is 1 or 2
+
+    Note over CS,CSMS: Manual Action: Request CSMS to set new<br/>NetworkConnectionProfile with higher security profile
+
+    CSMS->>CS: 1. SetNetworkProfileRequest
+    Note left of CSMS: connectionData:<br/>messageTimeout: <Configured><br/>ocppCsmsUrl: <Configured><br/>ocppInterface: <Configured><br/>ocppTransport: JSON<br/>ocppVersion: OCPP20<br/>securityProfile: <Current + 1>
+
+    CS-->>CSMS: 2. SetNetworkProfileResponse (status: Accepted)
+
+    Note over CS,CSMS: Manual Action: Request CSMS to change<br/>NetworkConfigurationPriority
+
+    CSMS->>CS: 3. SetVariablesRequest
+    Note left of CSMS: variable.name: "NetworkConfigurationPriority"<br/>component.name: "OCPPCommCtrlr"<br/>attributeValue: <configurationSlot from step 1>
+
+    CS-->>CSMS: 4. SetVariablesResponse (status: Accepted)
+
+    Note over CS,CSMS: Manual Action: Request CSMS to reboot CS
+
+    CSMS->>CS: 5. ResetRequest
+    CS-->>CSMS: 6. ResetResponse (status: Accepted)
+
+    Note over CS,CSMS: CS reboots and reconnects
+
+    CS->>CSMS: 7. Reconnect with security profile <Current + 1>
+    CSMS-->>CS: 8. CSMS accepts the connection
+
+    Note over CS,CSMS: Reusable State: Booted
+
+    CS->>CSMS: BootNotificationRequest (reason: PowerUp)
+    CSMS-->>CS: BootNotificationResponse (status: Accepted)
+
+    CS->>CSMS: StatusNotificationRequest (connectorStatus: Available)
+    CSMS-->>CS: Response
+
+    CS->>CSMS: NotifyEventRequest
+    Note right of CS: trigger: Delta<br/>actualValue: "Available"<br/>component.name: "Connector"<br/>variable.name: "AvailabilityState"
+    CSMS-->>CS: Response
+
+    CS->>CSMS: 10. Reconnect with old security profile <Current>
+    CSMS--xCS: 11. CSMS rejects the connection
+    Note over CSMS: Old security profile no longer accepted
+
+    CS->>CSMS: 12. Reconnect with upgraded security profile <Current + 1>
+    CSMS-->>CS: 13. CSMS accepts the connection

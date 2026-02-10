@@ -1,0 +1,17 @@
+sequenceDiagram
+    participant CS as Charging Station (OCTT)
+    participant CSMS as CSMS (System Under Test)
+
+    Note over CS,CSMS: Test Case: TC_N_47_CSMS
+    Note over CS,CSMS: Get Monitoring report - Report all
+
+    CSMS->>CS: 1. GetMonitoringReportRequest
+    Note left of CSMS: monitoringCriteria = omitted<br/>componentVariable = omitted
+
+    CS-->>CSMS: 2. GetMonitoringReportResponse
+    Note right of CS: status = Accepted
+
+    CS->>CSMS: 3. NotifyMonitoringReportRequest
+    Note right of CS: monitor data for<br/>all monitors
+
+    CSMS-->>CS: 4. NotifyMonitoringReportResponse

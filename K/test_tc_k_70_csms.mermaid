@@ -1,0 +1,20 @@
+sequenceDiagram
+    participant CS as Charging Station (OCTT)
+    participant CSMS as CSMS (System Under Test)
+
+    Note over CS,CSMS: Test Case: TC_K_70_CSMS
+    Note over CS,CSMS: Set Charging Profile - Multiple Profiles
+
+    Note over CS,CSMS: Reusable State: EnergyTransferStarted
+
+    CSMS->>CS: 1. SetChargingProfileRequest
+    Note left of CSMS: chargingProfilePurpose = TxDefaultProfile<br/>chargingProfileKind = Absolute or Recurring<br/>chargingSchedule.startSchedule = <Not omitted>
+
+    CS-->>CSMS: 2. SetChargingProfileResponse
+    Note right of CS: status = Accepted
+
+    CSMS->>CS: 3. SetChargingProfileRequest
+    Note left of CSMS: chargingProfile.id = <different id from step 1><br/>chargingProfilePurpose = ChargingStationMaxProfile<br/>chargingProfileKind = Absolute<br/>chargingSchedule.startSchedule = <Not omitted>
+
+    CS-->>CSMS: 4. SetChargingProfileResponse
+    Note right of CS: status = Accepted

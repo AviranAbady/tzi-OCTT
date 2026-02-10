@@ -1,0 +1,12 @@
+sequenceDiagram
+    participant CS as Charging Station (OCTT)
+    participant CSMS as CSMS (System Under Test)
+
+    Note over CS,CSMS: Test Case: TC_N_44_CSMS
+    Note over CS,CSMS: Clear Monitoring - Rejected
+
+    CSMS->>CS: 1. ClearVariableMonitoringRequest
+    Note left of CSMS: id list
+
+    CS-->>CSMS: 2. ClearVariableMonitoringResponse
+    Note right of CS: clearMonitoringResult[0].status = Rejected

@@ -1,0 +1,30 @@
+sequenceDiagram
+    participant CS as Charging Station (OCTT)
+    participant CSMS as CSMS (System Under Test)
+
+    Note over CS,CSMS: Test Case: TC_M_12_CSMS
+    Note over CS,CSMS: Retrieve certificates - CSMSRootCertificate
+
+    Note over CS,CSMS: Step 1: GetInstalledCertificates (SHA256)
+
+    CSMS->>CS: 1. GetInstalledCertificateIdsRequest
+    Note left of CSMS: certificateType = [CSMSRootCertificate]
+
+    CS-->>CSMS: 2. GetInstalledCertificateIdsResponse
+    Note right of CS: status = Accepted<br/>certificateHashDataChain[0].hashAlgorithm = SHA256
+
+    Note over CS,CSMS: Step 2: GetInstalledCertificates (SHA384)
+
+    CSMS->>CS: 3. GetInstalledCertificateIdsRequest
+    Note left of CSMS: certificateType = [CSMSRootCertificate]
+
+    CS-->>CSMS: 4. GetInstalledCertificateIdsResponse
+    Note right of CS: status = Accepted<br/>certificateHashDataChain[0].hashAlgorithm = SHA384
+
+    Note over CS,CSMS: Step 3: GetInstalledCertificates (SHA512)
+
+    CSMS->>CS: 5. GetInstalledCertificateIdsRequest
+    Note left of CSMS: certificateType = [CSMSRootCertificate]
+
+    CS-->>CSMS: 6. GetInstalledCertificateIdsResponse
+    Note right of CS: status = Accepted<br/>certificateHashDataChain[0].hashAlgorithm = SHA512

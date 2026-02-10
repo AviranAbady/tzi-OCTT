@@ -1,0 +1,16 @@
+sequenceDiagram
+    participant CS as Charging Station (OCTT)
+    participant CSMS as CSMS (System Under Test)
+
+    Note over CS,CSMS: Test Case: TC_P_03_CSMS
+    Note over CS,CSMS: CustomData - Receive custom data
+
+    CS->>CSMS: 1. StatusNotificationRequest
+    Note right of CS: customData = <customData>
+
+    CSMS-->>CS: 2. StatusNotificationResponse
+
+    CS->>CSMS: 3. TransactionEventRequest
+    Note right of CS: customData = <customData><br/>transactionInfo.customData = <customData>
+
+    CSMS-->>CS: 4. TransactionEventResponse

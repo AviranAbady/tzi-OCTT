@@ -1,0 +1,32 @@
+sequenceDiagram
+    participant CS as Charging Station (OCTT)
+    participant CSMS as CSMS (System Under Test)
+
+    Note over CS,CSMS: Test Case: TC_L_17_CSMS
+    Note over CS,CSMS: Publish Firmware - Published
+
+    CSMS->>CS: 1. PublishFirmwareRequest
+    Note left of CSMS: location<br/>checksum<br/>requestId
+
+    CS-->>CSMS: 2. PublishFirmwareResponse
+    Note right of CS: status = Accepted
+
+    CS->>CSMS: 3. PublishFirmwareStatusNotificationRequest
+    Note right of CS: status = Downloading
+
+    CSMS-->>CS: 4. PublishFirmwareStatusNotificationResponse
+
+    CS->>CSMS: 5. PublishFirmwareStatusNotificationRequest
+    Note right of CS: status = Downloaded
+
+    CSMS-->>CS: 6. PublishFirmwareStatusNotificationResponse
+
+    CS->>CSMS: 7. PublishFirmwareStatusNotificationRequest
+    Note right of CS: status = ChecksumVerified
+
+    CSMS-->>CS: 8. PublishFirmwareStatusNotificationResponse
+
+    CS->>CSMS: 9. PublishFirmwareStatusNotificationRequest
+    Note right of CS: status = Published<br/>location = [local URI]
+
+    CSMS-->>CS: 10. PublishFirmwareStatusNotificationResponse

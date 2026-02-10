@@ -1,0 +1,12 @@
+sequenceDiagram
+    participant CS as Charging Station (OCTT)
+    participant CSMS as CSMS (System Under Test)
+
+    Note over CS,CSMS: Test Case: TC_M_28_CSMS
+    Note over CS,CSMS: Certificate Update EV - Success
+
+    CS->>CSMS: 1. Get15118EVCertificateRequest
+    Note right of CS: action = Update<br/>iso15118SchemaVersion<br/>exiRequest = <EXI encoded request>
+
+    CSMS-->>CS: 2. Get15118EVCertificateResponse
+    Note left of CSMS: status = Accepted<br/>exiResponse = <Raw CertificateInstallationRes, Base64 encoded>

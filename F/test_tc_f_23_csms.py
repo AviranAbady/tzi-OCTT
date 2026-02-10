@@ -1,0 +1,144 @@
+"""
+TC_F_23 - Trigger message - StatusNotification - Specific EVSE - Available
+Use case: F06 | Requirements: F06.FR.01, F06.FR.02, F06.FR.13
+F06.FR.01: In the TriggerMessageRequest message, the CSMS SHALL indicate which message(s) it wishes to receive.
+F06.FR.02: The requested message SHALL be leading. If the specified evseId is not relevant to the message, it SHALL be ignored. In such cases the requested message SHALL still be sent.
+    Precondition: F06.FR.01. For every such requested message.
+F06.FR.13: When sending a TriggerMessageRequest with requestedMessage set to StatusNotification, the CSMS SHALL include the evse field. StatusNotification messages can only be sent at connector level.
+    Precondition: When sending a TriggerMessageRequest with requestedMessage set to: StatusNotification
+System under test: CSMS
+
+Description:
+    The CSMS can request a Charging Station to send Charging Station-initiated messages. In the request
+    the CSMS indicates which message it wishes to receive.
+
+Purpose:
+    To verify if the CSMS is able to trigger the Charging Station to send a StatusNotificationRequest
+    for a specific available EVSE, using a TriggerMessageRequest.
+
+Main:
+    1. CSMS sends TriggerMessageRequest (requestedMessage=StatusNotification, evse.id=<configured>)
+    2. CS responds with TriggerMessageResponse (status=Accepted)
+    3. CS sends StatusNotificationRequest (connectorStatus=Available, evseId=<configured>,
+       connectorId=<configured>) and NotifyEventRequest (trigger=Delta, actualValue="Available",
+       component.name="Connector", component.evse.id=<configured>,
+       component.evse.connectorId=<configured>, variable.name="AvailabilityState")
+    4. CSMS responds accordingly
+
+Tool validations:
+    * Step 1: TriggerMessageRequest
+      - requestedMessage must be StatusNotification
+      - evse.id must be <Configured evseId>
+
+Configuration:
+    CSMS_ADDRESS              - WebSocket URL of the CSMS
+    BASIC_AUTH_CP             - Charge Point identifier
+    BASIC_AUTH_CP_PASSWORD    - Charge Point password
+    CONFIGURED_EVSE_ID        - EVSE id (default 1)
+    CONFIGURED_CONNECTOR_ID   - Connector id (default 1)
+    CSMS_ACTION_TIMEOUT       - Seconds to wait for CSMS action (default 30)
+"""
+import asyncio
+import logging
+import os
+import sys
+import time
+
+import pytest
+import websockets
+
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+from ocpp.v201.enums import (
+    RegistrationStatusEnumType,
+    ConnectorStatusEnumType,
+    MessageTriggerEnumType,
+)
+from ocpp.v201.datatypes import EventDataType, ComponentType, VariableType, EVSEType
+from ocpp.v201.enums import (
+    EventTriggerEnumType as EventTriggerType,
+    EventNotificationEnumType as EventNotificationType,
+)
+
+from tzi_charge_point import TziChargePoint
+from utils import get_basic_auth_headers, now_iso
+
+logging.basicConfig(level=logging.INFO)
+
+CSMS_ADDRESS = os.environ.get('CSMS_ADDRESS', 'ws://localhost:9000')
+BASIC_AUTH_CP = os.environ.get('BASIC_AUTH_CP', 'CP_1')
+BASIC_AUTH_CP_PASSWORD = os.environ.get('BASIC_AUTH_CP_PASSWORD', '0123456789123456')
+EVSE_ID = int(os.environ.get('CONFIGURED_EVSE_ID', '1'))
+CONNECTOR_ID = int(os.environ.get('CONFIGURED_CONNECTOR_ID', '1'))
+CSMS_ACTION_TIMEOUT = int(os.environ.get('CSMS_ACTION_TIMEOUT', '30'))
+
+
+@pytest.mark.asyncio
+async def test_tc_f_23():
+    """Trigger message - StatusNotification - Specific EVSE - Available."""
+    cp_id = BASIC_AUTH_CP
+    uri = f'{CSMS_ADDRESS}/{cp_id}'
+    headers = get_basic_auth_headers(cp_id, BASIC_AUTH_CP_PASSWORD)
+
+    ws = await websockets.connect(
+        uri=uri,
+        subprotocols=['ocpp2.0.1'],
+        extra_headers=headers,
+    )
+    time.sleep(0.5)
+
+    cp = TziChargePoint(cp_id, ws)
+    start_task = asyncio.create_task(cp.start())
+
+    # Boot and establish session
+    boot_response = await cp.send_boot_notification()
+    assert boot_response.status == RegistrationStatusEnumType.accepted
+
+    await cp.send_status_notification(1, ConnectorStatusEnumType.available, evse_id=EVSE_ID)
+
+    # Step 1-2: Wait for CSMS to send TriggerMessageRequest
+    await asyncio.wait_for(
+        cp._received_trigger_message.wait(),
+        timeout=CSMS_ACTION_TIMEOUT,
+    )
+
+    # Validate Step 1: TriggerMessageRequest content
+    assert cp._trigger_message_data == MessageTriggerEnumType.status_notification or \
+           cp._trigger_message_data == 'StatusNotification', \
+        f"Expected requestedMessage=StatusNotification, got {cp._trigger_message_data}"
+
+    assert cp._trigger_message_evse is not None, "Expected evse to be present"
+    evse = cp._trigger_message_evse
+    if isinstance(evse, dict):
+        assert evse.get('id') == EVSE_ID, \
+            f"Expected evse.id={EVSE_ID}, got {evse.get('id')}"
+
+    # Step 3: CS sends StatusNotificationRequest (Available)
+    status_response = await cp.send_status_notification(
+        connector_id=CONNECTOR_ID,
+        status=ConnectorStatusEnumType.available,
+        evse_id=EVSE_ID,
+    )
+    assert status_response is not None
+
+    # Step 3 continued: CS sends NotifyEventRequest
+    event_data = [
+        EventDataType(
+            trigger=EventTriggerType.delta,
+            actual_value='Available',
+            component=ComponentType(
+                name='Connector',
+                evse=EVSEType(id=EVSE_ID, connector_id=CONNECTOR_ID),
+            ),
+            variable=VariableType(name='AvailabilityState'),
+            timestamp=now_iso(),
+            event_id=1,
+            event_notification_type=EventNotificationType.custom_monitor,
+        )
+    ]
+    notify_response = await cp.send_notify_event(data=event_data)
+    assert notify_response is not None
+
+    logging.info("TC_F_23 completed successfully")
+    start_task.cancel()
+    await ws.close()

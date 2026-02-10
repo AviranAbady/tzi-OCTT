@@ -14,5 +14,7 @@ sequenceDiagram
     OCSP-->>CSMS: OCSP Response<br/>(certificate is revoked)
     
     CSMS-->>CS: AuthorizeResponse<br/>{<br/>  idTokenInfo.status: "Invalid"<br/>}
-    
+    Note left of CSMS: certificateStatus: CertificateRevoked
+
     Note over CS, CSMS: Authorization is rejected due to revoked certificate
+    Note over CS, CSMS: Post Validation: no TransactionEventRequest with triggerReason=Authorized or chargingState=Charging

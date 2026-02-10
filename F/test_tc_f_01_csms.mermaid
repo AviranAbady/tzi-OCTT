@@ -1,0 +1,23 @@
+sequenceDiagram
+    participant CS as Charging Station (OCTT)
+    participant CSMS as CSMS (System Under Test)
+
+    Note over CS,CSMS: Test Case: TC_F_01_CSMS
+    Note over CS,CSMS: Remote start transaction - Cable plugin first
+
+    Note over CS,CSMS: Reusable State: EVConnectedPreSession
+
+    Note over CSMS: Manual Action: Trigger the CSMS to request<br/>the Charging Station to start a transaction.
+
+    CSMS->>CS: 1. RequestStartTransactionRequest
+    Note left of CSMS: idToken.idToken = <Configured valid_idtoken_idtoken><br/>idToken.type = <Configured valid_idtoken_type>
+
+    CS-->>CSMS: 2. RequestStartTransactionResponse
+    Note right of CS: status = Accepted<br/>transactionId = <Generated transactionId>
+
+    CS->>CSMS: 3. TransactionEventRequest
+    Note right of CS: triggerReason = RemoteStart<br/>transactionInfo.remoteStartId = <CSMS provided remoteStartId><br/>eventType = Updated
+
+    CSMS-->>CS: 4. TransactionEventResponse
+
+    Note over CS,CSMS: 5. Execute Reusable State EnergyTransferStarted<br/>(State is Authorized and _EVConnected = true)

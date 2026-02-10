@@ -1,0 +1,16 @@
+sequenceDiagram
+    participant CS as Charging Station (OCTT)
+    participant CSMS as CSMS (System Under Test)
+
+    Note over CS,CSMS: Test Case: TC_K_52_CSMS
+    Note over CS,CSMS: Set / Update External Charging Limit -<br/>ChargingStationExternalConstraints in report
+
+    CSMS->>CS: 1. GetChargingProfilesRequest
+
+    CS-->>CSMS: 2. GetChargingProfilesResponse
+    Note right of CS: status = Accepted
+
+    CS->>CSMS: 3. ReportChargingProfilesRequest
+    Note right of CS: requestId = Generated Id<br/>chargingProfile.chargingProfilePurpose = ChargingStationExternalConstraints
+
+    CSMS-->>CS: 4. ReportChargingProfilesResponse

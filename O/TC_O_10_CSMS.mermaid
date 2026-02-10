@@ -1,0 +1,16 @@
+sequenceDiagram
+    participant CS as Charging Station (OCTT)
+    participant CSMS as CSMS (System Under Test)
+
+    Note over CS,CSMS: Test Case: TC_O_10_CSMS
+    Note over CS,CSMS: Set Display Message - Specific transaction - UnknownTransaction
+
+    Note over CS,CSMS: Reusable State: EnergyTransferStarted
+
+    Note over CS,CSMS: Manual Action: Request the CSMS to send a display message for a specific transaction
+
+    CSMS->>CS: 1. SetDisplayMessageRequest
+    Note left of CSMS: message.transactionId = <not omitted><br/>message.priority = <Configured Priority>
+
+    CS-->>CSMS: 2. SetDisplayMessageResponse
+    Note right of CS: status = UnknownTransaction

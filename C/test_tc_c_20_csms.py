@@ -2,7 +2,11 @@
 Test case name      Authorization through authorization cache - Invalid
 Test case Id        TC_C_20_CSMS
 Use case Id(s)      C12
-Requirement(s)      C12_FR_03
+Requirement(s)      C12.FR.03
+
+Requirement Details:
+    C12.FR.03: C12.FR.02 AND The CSMS SHALL check the authorization status of the IdToken when processing this TransactionEventRequest.
+        Precondition: C12.FR.02
 System under test   CSMS
 
 Description         This test case describes how the EV Driver is authorized to start a transaction while the Charging Station
@@ -34,10 +38,14 @@ import asyncio
 import pytest
 import os
 
-from ocpp.v201.enums import AuthorizationStatusType, TriggerReasonType, TransactionEventType
+from ocpp.v201.enums import (
+    AuthorizationStatusEnumType as AuthorizationStatusType,
+    TriggerReasonEnumType as TriggerReasonType,
+    TransactionEventEnumType as TransactionEventType,
+)
 from ocpp.v201.call import TransactionEvent
 from ocpp.v201.datatypes import IdTokenType
-from mock_charge_point import MockChargePoint
+from tzi_charge_point import TziChargePoint
 from reusable_states.ev_connected_pre_session import ev_connected_pre_session
 from reusable_states.parking_bay_occupied import parking_bay_occupied
 from utils import get_basic_auth_headers, generate_transaction_id, now_iso, validate_schema
@@ -56,7 +64,7 @@ async def test_tc_c_20(connection):
     connector_id = 1
 
     assert connection.open
-    cp = MockChargePoint(BASIC_AUTH_CP, connection)
+    cp = TziChargePoint(BASIC_AUTH_CP, connection)
 
     start_task = asyncio.create_task(cp.start())
     await parking_bay_occupied(cp, evse_id=evse_id)
@@ -74,8 +82,8 @@ async def test_tc_c_20(connection):
         transaction_info={
             "transaction_id": transaction_id,
             "charging_state": "EVConnected",
-            "id_token": id_token,
         },
+        id_token=id_token,
         evse={
             "id": evse_id,
             "connector_id": connector_id

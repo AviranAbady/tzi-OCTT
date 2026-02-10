@@ -1,0 +1,13 @@
+sequenceDiagram
+    participant CS as Charging Station (OCTT)
+    participant CSMS as CSMS (System Under Test)
+
+    Note over CS,CSMS: Test Case: TC_B_25_CSMS
+    Note over CS,CSMS: Reset EVSE - Without ongoing transaction
+
+    Note over CSMS: Manual Action: Request CSMS to reboot EVSE<br/>with status OnIdle
+
+    CSMS->>CS: 1. ResetRequest
+    Note left of CSMS: type: OnIdle<br/>evseID: <Configured evseId>
+
+    CS-->>CSMS: 2. ResetResponse (status: Accepted)

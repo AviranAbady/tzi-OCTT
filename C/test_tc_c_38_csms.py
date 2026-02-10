@@ -8,10 +8,11 @@ System under test   CSMS
 Description         This test case covers how the Charging Station autonomously stores a record of previously presented
                     identifiers that have been successfully authorized by the CSMS in the Authorization Cache. (Successfully
                     meaning: a response received on a message containing an IdToken)
-                    Purpose To verify if the CSMS is able to request the Charging Station to clear all identifiers from the Authorization
-                    Cache according to the mechanism as described in the OCPP specification.
+                    Purpose To verify if the CSMS is able to request the Charging Station to clear all identifiers from the
+                    Authorization Cache according to the mechanism as described in the OCPP specification.
 
 Prerequisite(s)     N/a
+
 Before (Preparations)
     Configuration State:    N/a
     Memory State:           N/a
@@ -20,25 +21,41 @@ Before (Preparations)
 Test Scenario
 1. The CSMS sends a ClearCacheRequest
 2. The OCTT responds with a ClearCacheResponse with status Rejected
+
+Configuration
+    The CSMS must be triggered externally (e.g., via CSMS admin API or UI) to send ClearCacheRequest
+    to the connected Charging Station within CSMS_ACTION_TIMEOUT seconds.
+    The MockChargePoint is pre-configured to respond with Rejected status.
 """
 
-
 import asyncio
-import logging
-
 import pytest
-from ocpp.v201 import call, ChargePoint as cp, enums
-from ocpp.v201 import call_result
-from ocpp.v201.datatypes import StatusInfoType
+import os
 
-from mock_charge_point import MockChargePoint
-from utils import now_iso
+from ocpp.v201.enums import ClearCacheStatusEnumType as ClearCacheStatusType
+from tzi_charge_point import TziChargePoint
+from utils import get_basic_auth_headers
+
+BASIC_AUTH_CP = os.environ['BASIC_AUTH_CP']
+BASIC_AUTH_CP_PASSWORD = os.environ['BASIC_AUTH_CP_PASSWORD']
+CSMS_ACTION_TIMEOUT = int(os.environ.get('CSMS_ACTION_TIMEOUT', 30))
 
 
 @pytest.mark.asyncio
-async def test_tc_c_38_csms():
-    # This test requires the CSMS to initiate a ClearCacheRequest
-    # Not it's possible to implement this test without creating a
-    # weird triggering mechanism in CSMS. TBD later
+@pytest.mark.parametrize("connection", [(BASIC_AUTH_CP, get_basic_auth_headers(BASIC_AUTH_CP, BASIC_AUTH_CP_PASSWORD))],
+                         indirect=True)
+async def test_tc_c_38(connection):
+    assert connection.open
+    cp = TziChargePoint(BASIC_AUTH_CP, connection)
 
-    logging.info("Test case TC_C_38_CSMS finished")
+    # Configure the MockChargePoint to respond with Rejected to ClearCacheRequest
+    cp._clear_cache_response_status = ClearCacheStatusType.rejected
+
+    start_task = asyncio.create_task(cp.start())
+
+    # Wait for the CSMS to send a ClearCacheRequest (triggered externally by CSMS operator/admin)
+    await asyncio.wait_for(cp._received_clear_cache.wait(), timeout=CSMS_ACTION_TIMEOUT)
+
+    assert cp._received_clear_cache.is_set(), "CSMS did not send ClearCacheRequest within timeout"
+
+    start_task.cancel()

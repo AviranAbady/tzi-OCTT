@@ -1,0 +1,19 @@
+sequenceDiagram
+    participant CS as Charging Station (OCTT)
+    participant CSMS as CSMS (System Under Test)
+
+    Note over CS,CSMS: Test Case: TC_K_29_CSMS
+    Note over CS,CSMS: Get Charging Profile - EvseId 0
+
+    Note over CS,CSMS: Charging State: EnergyTransferStarted
+
+    CSMS->>CS: 1. GetChargingProfilesRequest
+    Note left of CSMS: evseId = 0<br/>chargingProfile.chargingProfilePurpose = <Configured chargingProfilePurpose><br/>chargingProfile.stackLevel = omit<br/>chargingProfile.chargingLimitSource = omit<br/>chargingProfile.chargingProfileId = omit
+
+    CS-->>CSMS: 2. GetChargingProfilesResponse
+    Note right of CS: status = Accepted
+
+    CS->>CSMS: 3. ReportChargingProfilesRequest
+    Note right of CS: requestId = <Received requestId>
+
+    CSMS-->>CS: 4. ReportChargingProfilesResponse

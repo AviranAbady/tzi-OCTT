@@ -1,0 +1,13 @@
+sequenceDiagram
+    participant CS as Charging Station (OCTT)
+    participant CSMS as CSMS (System Under Test)
+
+    Note over CS,CSMS: Test Case: TC_B_58_CSMS
+    Note over CS,CSMS: WebSocket Subprotocol validation
+
+    CS->>CSMS: 1. HTTP Upgrade with Sec-WebSocket-Protocol: ocpp0.1
+    CSMS--xCS: 2. Reject upgrade (no WebSocket connection)
+
+    CS->>CSMS: 3. HTTP Upgrade with Sec-WebSocket-Protocol: ocpp0.1,ocpp2.0.1
+    CSMS-->>CS: 4. Accept upgrade and select subprotocol
+    Note over CSMS: Validation: response header<br/>Sec-WebSocket-Protocol: ocpp2.0.1
