@@ -131,9 +131,15 @@ Collect-only (fast sanity check):
 pytest --collect-only -q
 ```
 
-## Local Mock CSMS
+## Local CSMS playground
 
-`csms.py` provides a minimal in-memory CSMS to help validate test behavior locally. It is not intended for production use.
+[csms.py](csms.py) provides a minimal in-memory CSMS to help validate test behavior locally. It is not intended for production use.
+currently supporting the `A B C D E` testcases.
+```
+pytest -v -p no:warnings ./A ./B ./C ./D ./E
+
+============== 88 passed in 143.02s (0:02:23) ==============
+```
 
 ## Contributing
 

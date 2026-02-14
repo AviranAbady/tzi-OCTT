@@ -55,7 +55,7 @@ from utils import get_basic_auth_headers, generate_transaction_id, now_iso
 logging.basicConfig(level=logging.INFO)
 
 CSMS_ADDRESS = os.environ['CSMS_ADDRESS']
-BASIC_AUTH_CP = os.environ['BASIC_AUTH_CP']
+BASIC_AUTH_CP = os.environ['BASIC_AUTH_CP_B']
 BASIC_AUTH_CP_PASSWORD = os.environ['BASIC_AUTH_CP_PASSWORD']
 CSMS_ACTION_TIMEOUT = int(os.environ['CSMS_ACTION_TIMEOUT'])
 CONFIGURED_EVSE_ID = int(os.environ['CONFIGURED_EVSE_ID'])

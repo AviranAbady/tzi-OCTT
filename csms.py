@@ -1,7 +1,7 @@
 """
 CSMS (Charging Station Management System) implementation for OCPP 2.0.1 test suite.
 
-Note: This CSMS is intended solely for testing, debugging, and stepping through
+Note: This implementation is intended solely for testing, debugging, and stepping through
       the tzi-octt test suite. It is NOT designed to be used in production.
       Written entirely by Claude Code, the magnificent.
 
@@ -259,6 +259,30 @@ _SP1_D_PROVISIONING = [
     ('Accepted', 'get_local_list_version'),
 ]
 
+# E-test transaction tracking and provisioning
+# E-mode is detected when a non-boot CP sends 3+ StatusNotification messages,
+# distinguishing E tests (many connections with StatusNotification) from C tests
+# (only 1-2 StatusNotification before their silent ClearCache tests).
+_E_MODE_THRESHOLD = 3
+_e_cp_status_count = {}         # cp_id -> StatusNotification count (non-boot only)
+_e_mode_active = set()          # CP IDs detected as E-mode
+_e_cp_transactions = {}         # cp_id -> latest transaction_id
+_e_action_index = {}            # cp_id -> next E provisioning action index
+_e_pending_action_task = {}     # cp_id -> asyncio.Task for delayed actions
+
+# E provisioning sequence: (trigger_type, action_name)
+#   'after_charging' = fire after TransactionEvent Updated with Charging state + silence
+#   'after_ended'    = fire after TransactionEvent Ended with offline=True + silence
+#   'silent'         = fire on silent connection (no messages within auto-detect timeout)
+_SP1_E_PROVISIONING = [
+    ('after_charging', 'request_stop_transaction'),     # E_21
+    ('silent', 'get_transaction_status'),                # E_29 reconnect
+    ('after_charging', 'get_transaction_status'),        # E_30
+    ('after_ended', 'get_transaction_status'),           # E_31 reconnect
+    ('silent', 'get_transaction_status_no_id'),          # E_33 reconnect
+    ('silent', 'get_transaction_status_no_id'),          # E_34
+]
+
 
 # ─── Per-CP Test Mode ───────────────────────────────────────────────────────
 
@@ -319,6 +343,9 @@ class ChargePointHandler(ChargePoint):
     async def route_message(self, raw_msg):
         """Override to track when any message is received from this CP."""
         self._any_message_received.set()
+        # Cancel any pending E-mode delayed action (new message = CP is still active)
+        if self.id in _e_pending_action_task:
+            _e_pending_action_task.pop(self.id).cancel()
         return await super().route_message(raw_msg)
 
     @on(Action.boot_notification)
@@ -431,6 +458,11 @@ class ChargePointHandler(ChargePoint):
         if self._boot_status in ('Pending', 'Rejected'):
             logging.info(f"StatusNotification from {self.id} rejected (boot={self._boot_status})")
             raise OCPPSecurityError('Not authorized during Pending/Rejected state')
+        # E-mode detection: count StatusNotifications from non-boot CPs
+        if not self._boot_received.is_set():
+            _e_cp_status_count[self.id] = _e_cp_status_count.get(self.id, 0) + 1
+            if _e_cp_status_count[self.id] >= _E_MODE_THRESHOLD:
+                _e_mode_active.add(self.id)
         logging.info(f"StatusNotification from {self.id}: {kwargs}")
         return call_result.StatusNotification()
 
@@ -505,6 +537,24 @@ class ChargePointHandler(ChargePoint):
     async def on_transaction_event(self, event_type, timestamp, trigger_reason,
                                    seq_no, transaction_info, id_token=None,
                                    evse=None, **kwargs):
+        # E-mode transaction tracking
+        if self.id in _e_mode_active and isinstance(transaction_info, dict):
+            txn_id = transaction_info.get('transaction_id')
+            if txn_id:
+                _e_cp_transactions[self.id] = txn_id
+            charging_state = transaction_info.get('charging_state', '')
+            offline = kwargs.get('offline', False)
+
+            idx = _e_action_index.get(self.id, 0)
+            if idx < len(_SP1_E_PROVISIONING):
+                trigger, action = _SP1_E_PROVISIONING[idx]
+                if trigger == 'after_charging' and str(charging_state) == 'Charging':
+                    _e_pending_action_task[self.id] = asyncio.create_task(
+                        _delayed_e_action(self, action, idx))
+                elif trigger == 'after_ended' and str(event_type) == 'Ended' and offline:
+                    _e_pending_action_task[self.id] = asyncio.create_task(
+                        _delayed_e_action(self, action, idx))
+
         response_kwargs = {}
         if id_token:
             token_value = (id_token.get('id_token', '')
@@ -749,6 +799,41 @@ async def _prov_get_local_list_version(cp):
     await cp.call(call.GetLocalListVersion())
 
 
+# ─── E-Mode Actions ──────────────────────────────────────────────────────────
+
+async def _delayed_e_action(cp, action, idx, delay=3):
+    """Execute an E-mode action after a delay, unless cancelled by new CP messages."""
+    try:
+        await asyncio.sleep(delay)
+        if not cp._connection.open:
+            return
+        txn_id = _e_cp_transactions.get(cp.id)
+        _e_action_index[cp.id] = idx + 1
+        logging.info(f"E-mode delayed action #{idx} for {cp.id}: {action} (txn={txn_id})")
+        await _execute_e_action(cp, action, txn_id)
+    except asyncio.CancelledError:
+        pass  # Cancelled because CP sent another message
+    except Exception as e:
+        logging.warning(f"E-mode delayed action failed for {cp.id}: {e}")
+    finally:
+        _e_pending_action_task.pop(cp.id, None)
+
+
+async def _execute_e_action(cp, action, txn_id=None):
+    """Execute an E-mode CSMS-initiated action."""
+    if action == 'request_stop_transaction' and txn_id:
+        logging.info(f"Sending RequestStopTransaction to {cp.id} (txn={txn_id})")
+        await cp.call(call.RequestStopTransaction(transaction_id=txn_id))
+    elif action == 'get_transaction_status' and txn_id:
+        logging.info(f"Sending GetTransactionStatus to {cp.id} (txn={txn_id})")
+        await cp.call(call.GetTransactionStatus(transaction_id=txn_id))
+    elif action == 'get_transaction_status_no_id':
+        logging.info(f"Sending GetTransactionStatus (no txId) to {cp.id}")
+        await cp.call(call.GetTransactionStatus())
+    else:
+        logging.warning(f"E-mode: unknown action '{action}' or missing txn_id for {cp.id}")
+
+
 # ─── Test Mode Actions ───────────────────────────────────────────────────────
 
 async def execute_test_mode_actions(cp, security_profile):
@@ -859,6 +944,22 @@ async def auto_detect_and_execute(cp, security_profile):
 
     # Determine which action to perform based on session mode and counter
     key = (cp.id, security_profile)
+
+    # E-session: use E-specific actions (takes precedence over C-mode)
+    if cp.id in _e_mode_active:
+        idx = _e_action_index.get(cp.id, 0)
+        if idx < len(_SP1_E_PROVISIONING):
+            trigger, action = _SP1_E_PROVISIONING[idx]
+            if trigger == 'silent':
+                _e_action_index[cp.id] = idx + 1
+                _auto_detect_used.add(cp.id)
+                txn_id = _e_cp_transactions.get(cp.id)
+                logging.info(f"Auto-detect: E-mode {cp.id} silent action #{idx} -> {action}")
+                try:
+                    await _execute_e_action(cp, action, txn_id)
+                except Exception as e:
+                    logging.error(f"E-mode silent action failed for {cp.id}: {e}")
+        return
 
     if security_profile == 1 and cp.id in _reactive_mode_detected:
         # C-session: use C-specific actions (clear_cache)

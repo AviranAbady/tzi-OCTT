@@ -36,7 +36,7 @@ from websockets import InvalidHandshake, InvalidStatusCode
 from utils import get_basic_auth_headers
 
 CSMS_ADDRESS = os.environ['CSMS_ADDRESS']
-BASIC_AUTH_CP = os.environ['BASIC_AUTH_CP']
+BASIC_AUTH_CP = os.environ['BASIC_AUTH_CP_B']
 BASIC_AUTH_CP_PASSWORD = os.environ['BASIC_AUTH_CP_PASSWORD']
 
 
