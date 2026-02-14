@@ -179,6 +179,12 @@ class TziChargePoint(ChargePoint):
         self.notify_event_sent = True
         return 'Started'
 
+    async def call(self, payload, suppress=False, unique_id=None, skip_schema_validation=False):
+        return await super().call(
+            payload, suppress=suppress, unique_id=unique_id,
+            skip_schema_validation=skip_schema_validation,
+        )
+
     async def start(self):
         try:
             await super().start()

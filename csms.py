@@ -1,6 +1,11 @@
 """
 CSMS (Charging Station Management System) implementation for OCPP 2.0.1 test suite.
 
+Note: This CSMS is intended solely for testing, debugging, and stepping through
+the tzi-octt test suite. It must NOT be used in production.
+
+Written entirely by Claude Code, the magnificent.
+
 Runs two servers:
   - WS  on port 9000 (Security Profile 1: Basic Auth, no TLS)
   - WSS on port 8082 (Security Profile 2: TLS + Basic Auth, Profile 3: mTLS)
@@ -74,9 +79,17 @@ from datetime import datetime, timedelta, timezone
 
 from ocpp.routing import on
 from ocpp.v201 import ChargePoint, call, call_result
-from ocpp.v201.enums import  Action, GenericStatusEnumType
+from ocpp.v201.enums import Action, GenericStatusEnumType
 from ocpp.v201.enums import RegistrationStatusEnumType
 from websockets import ConnectionClosedOK
+
+try:
+    from ocpp.exceptions import SecurityError as OCPPSecurityError
+except ImportError:
+    from ocpp.exceptions import OCPPError
+    class OCPPSecurityError(OCPPError):
+        code = 'SecurityError'
+        default_description = 'Not authorized'
 
 from utils import now_iso
 
@@ -107,6 +120,14 @@ CA_KEY_PATH = os.environ.get('CSMS_CA_KEY', 'certs/ca.key')
 CSMS_WSS_URL = os.environ.get('CSMS_WSS_URL', 'wss://localhost:8082')
 MESSAGE_TIMEOUT = int(os.environ.get('CSMS_MESSAGE_TIMEOUT', '30'))
 OCPP_INTERFACE = os.environ.get('CSMS_OCPP_INTERFACE', 'Wired0')
+
+# Provisioning configuration (B tests)
+CONFIGURED_EVSE_ID = int(os.environ.get('CONFIGURED_EVSE_ID', '1'))
+CONFIGURED_CONFIGURATION_SLOT = int(os.environ.get('CONFIGURED_CONFIGURATION_SLOT', '1'))
+CONFIGURED_SECURITY_PROFILE = int(os.environ.get('CONFIGURED_SECURITY_PROFILE', '2'))
+CONFIGURED_OCPP_CSMS_URL = os.environ.get('CONFIGURED_OCPP_CSMS_URL', 'wss://localhost:8082')
+CONFIGURED_OCPP_INTERFACE = os.environ.get('CONFIGURED_OCPP_INTERFACE', 'Wired0')
+CONFIGURED_MESSAGE_TIMEOUT_B = int(os.environ.get('CONFIGURED_MESSAGE_TIMEOUT', '30'))
 
 # ─── Token Database ──────────────────────────────────────────────────────────
 
@@ -151,6 +172,52 @@ _AUTO_SP3_ACTIONS = [
     'cert_renewal_v2g',       # TC_A_12
     'cert_renewal_combined',  # TC_A_13
     'cert_renewal_cs',        # TC_A_14
+]
+
+# ─── SP1 Provisioning Sequence ──────────────────────────────────────────────
+# Defines the boot response and post-boot action for each successive
+# BootNotification received on SP1 (WS) connections.
+# Format: (boot_status, action_name_or_None)
+
+_sp1_boot_counter = {}   # cp_id -> boot count on SP1
+_auto_detect_used = False  # Set when auto-detect fires a no-boot action
+
+_SP1_PROVISIONING = [
+    # Boot/registration
+    ('Accepted', None),
+    ('Pending', None),
+    ('Accepted', None),
+    # GetVariables
+    ('Accepted', 'get_variables_single'),
+    ('Accepted', 'get_variables_multiple'),
+    ('Accepted', 'get_variables_split'),
+    # SetVariables
+    ('Accepted', 'set_variables_single'),
+    ('Accepted', 'set_variables_multiple'),
+    # GetBaseReport
+    ('Accepted', 'get_base_report_config'),
+    ('Accepted', 'get_base_report_full'),
+    ('Accepted', 'get_base_report_summary'),
+    # GetReport with criteria
+    ('Accepted', 'get_report_criteria'),
+    # Reset CS
+    ('Accepted', 'reset_on_idle_cs'),
+    ('Accepted', None),
+    ('Accepted', 'reset_on_idle_cs'),
+    ('Accepted', None),
+    ('Accepted', 'reset_immediate_cs'),
+    ('Accepted', None),
+    # Reset EVSE
+    ('Accepted', 'reset_on_idle_evse'),
+    ('Accepted', 'reset_on_idle_evse'),
+    ('Accepted', 'reset_immediate_evse'),
+    # Pending/Rejected flows
+    ('Pending', None),
+    ('Pending', 'trigger_boot'),
+    ('Accepted', None),
+    # Network profile
+    ('Accepted', 'set_network_profile'),
+    ('Accepted', 'set_network_profile'),
 ]
 
 
@@ -203,24 +270,68 @@ class ChargePointHandler(ChargePoint):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._boot_received = asyncio.Event()
+        self._security_profile = 1
+        self._boot_status = None
 
     @on(Action.boot_notification)
     async def on_boot_notification(self, charging_station, reason, **kwargs):
         logging.info(f"BootNotification from {self.id}: reason={reason}")
         self._boot_received.set()
+
+        # Determine boot response from SP1 provisioning sequence
+        # (only when auto-detect no-boot actions have NOT been used,
+        # i.e., this is a provisioning-focused session like B tests)
+        if self._security_profile == 1 and not _auto_detect_used:
+            counter = _sp1_boot_counter.get(self.id, 0)
+            _sp1_boot_counter[self.id] = counter + 1
+
+            if counter < len(_SP1_PROVISIONING):
+                boot_status, action = _SP1_PROVISIONING[counter]
+            else:
+                boot_status, action = ('Accepted', None)
+
+            self._boot_status = boot_status
+            interval = 1 if boot_status in ('Pending', 'Rejected') else 10
+
+            if action:
+                asyncio.create_task(self._execute_provisioning(action))
+
+            logging.info(f"SP1 provisioning boot #{counter}: {boot_status}, action={action}")
+            return call_result.BootNotification(
+                current_time=now_iso(),
+                interval=interval,
+                status=getattr(RegistrationStatusEnumType, boot_status.lower()),
+            )
+
+        # Non-SP1 boots: always Accepted
+        self._boot_status = 'Accepted'
         return call_result.BootNotification(
             current_time=now_iso(),
             interval=10,
             status=RegistrationStatusEnumType.accepted
         )
 
+    async def _execute_provisioning(self, action):
+        """Execute a provisioning action after a short delay."""
+        await asyncio.sleep(2)
+        try:
+            await _dispatch_provisioning(self, action)
+        except Exception as e:
+            logging.warning(f"Provisioning action '{action}' failed for {self.id}: {e}")
+
     @on(Action.status_notification)
     async def on_status_notification(self, **kwargs):
+        if self._boot_status in ('Pending', 'Rejected'):
+            logging.info(f"StatusNotification from {self.id} rejected (boot={self._boot_status})")
+            raise OCPPSecurityError('Not authorized during Pending/Rejected state')
         logging.info(f"StatusNotification from {self.id}: {kwargs}")
         return call_result.StatusNotification()
 
     @on(Action.notify_event)
     async def on_notify_event(self, **kwargs):
+        if self._boot_status in ('Pending', 'Rejected'):
+            logging.info(f"NotifyEvent from {self.id} rejected (boot={self._boot_status})")
+            raise OCPPSecurityError('Not authorized during Pending/Rejected state')
         logging.info(f"NotifyEvent from {self.id}")
         return call_result.NotifyEvent()
 
@@ -288,10 +399,164 @@ class ChargePointHandler(ChargePoint):
             logging.info(f"TransactionEvent from {self.id}: type={event_type} trigger={trigger_reason}")
         return call_result.TransactionEvent(**response_kwargs)
 
+    @on(Action.notify_report)
+    async def on_notify_report(self, request_id, generated_at, seq_no, tbc=False,
+                                report_data=None, **kwargs):
+        logging.info(f"NotifyReport from {self.id}: request_id={request_id}, seq_no={seq_no}")
+        return call_result.NotifyReport()
+
     @on(Action.security_event_notification)
     async def on_security_event_notification(self, type, timestamp, **kwargs):
         logging.info(f"SecurityEventNotification from {self.id}: type={type}")
         return call_result.SecurityEventNotification()
+
+
+# ─── Provisioning Actions (SP1 post-boot) ────────────────────────────────────
+
+_prov_request_id = 0
+
+def _next_request_id():
+    global _prov_request_id
+    _prov_request_id += 1
+    return _prov_request_id
+
+
+async def _dispatch_provisioning(cp, action):
+    """Dispatch a provisioning action by name."""
+    dispatch = {
+        'get_variables_single': _prov_get_variables_single,
+        'get_variables_multiple': _prov_get_variables_multiple,
+        'get_variables_split': _prov_get_variables_split,
+        'set_variables_single': _prov_set_variables_single,
+        'set_variables_multiple': _prov_set_variables_multiple,
+        'get_base_report_config': lambda cp: _prov_get_base_report(cp, 'ConfigurationInventory'),
+        'get_base_report_full': lambda cp: _prov_get_base_report(cp, 'FullInventory'),
+        'get_base_report_summary': lambda cp: _prov_get_base_report(cp, 'SummaryInventory'),
+        'get_report_criteria': _prov_get_report_criteria,
+        'reset_on_idle_cs': lambda cp: _prov_reset(cp, 'OnIdle', None),
+        'reset_immediate_cs': lambda cp: _prov_reset(cp, 'Immediate', None),
+        'reset_on_idle_evse': lambda cp: _prov_reset(cp, 'OnIdle', CONFIGURED_EVSE_ID),
+        'reset_immediate_evse': lambda cp: _prov_reset(cp, 'Immediate', CONFIGURED_EVSE_ID),
+        'trigger_boot': _prov_trigger_boot,
+        'set_network_profile': _prov_set_network_profile,
+    }
+    handler = dispatch.get(action)
+    if handler:
+        await handler(cp)
+    else:
+        logging.warning(f"Unknown provisioning action: {action}")
+
+
+async def _prov_get_variables_single(cp):
+    logging.info(f"Provisioning: GetVariables(single) for {cp.id}")
+    await cp.call(call.GetVariables(get_variable_data=[
+        {'component': {'name': 'OCPPCommCtrlr'}, 'variable': {'name': 'OfflineThreshold'}},
+    ]))
+
+
+async def _prov_get_variables_multiple(cp):
+    logging.info(f"Provisioning: GetVariables(multiple) for {cp.id}")
+    await cp.call(call.GetVariables(get_variable_data=[
+        {'component': {'name': 'OCPPCommCtrlr'}, 'variable': {'name': 'OfflineThreshold'}},
+        {'component': {'name': 'AuthCtrlr'}, 'variable': {'name': 'AuthorizeRemoteStart'}},
+    ]))
+
+
+async def _prov_get_variables_split(cp):
+    logging.info(f"Provisioning: GetVariables(split 4+1) for {cp.id}")
+    await cp.call(call.GetVariables(get_variable_data=[
+        {'component': {'name': 'DeviceDataCtrlr'}, 'variable': {'name': 'ItemsPerMessage', 'instance': 'GetReport'}},
+        {'component': {'name': 'DeviceDataCtrlr'}, 'variable': {'name': 'ItemsPerMessage', 'instance': 'GetVariables'}},
+        {'component': {'name': 'DeviceDataCtrlr'}, 'variable': {'name': 'BytesPerMessage', 'instance': 'GetReport'}},
+        {'component': {'name': 'DeviceDataCtrlr'}, 'variable': {'name': 'BytesPerMessage', 'instance': 'GetVariables'}},
+    ]))
+    await asyncio.sleep(0.5)
+    await cp.call(call.GetVariables(get_variable_data=[
+        {'component': {'name': 'AuthCtrlr'}, 'variable': {'name': 'AuthorizeRemoteStart'}},
+    ]))
+
+
+async def _prov_set_variables_single(cp):
+    logging.info(f"Provisioning: SetVariables(single) for {cp.id}")
+    await cp.call(call.SetVariables(set_variable_data=[{
+        'component': {'name': 'OCPPCommCtrlr'},
+        'variable': {'name': 'OfflineThreshold'},
+        'attribute_value': '123',
+    }]))
+
+
+async def _prov_set_variables_multiple(cp):
+    logging.info(f"Provisioning: SetVariables(multiple) for {cp.id}")
+    await cp.call(call.SetVariables(set_variable_data=[
+        {
+            'component': {'name': 'OCPPCommCtrlr'},
+            'variable': {'name': 'OfflineThreshold'},
+            'attribute_value': '123',
+        },
+        {
+            'component': {'name': 'AuthCtrlr'},
+            'variable': {'name': 'AuthorizeRemoteStart'},
+            'attribute_value': 'false',
+        },
+    ]))
+
+
+async def _prov_get_base_report(cp, report_base):
+    logging.info(f"Provisioning: GetBaseReport({report_base}) for {cp.id}")
+    await cp.call(call.GetBaseReport(
+        request_id=_next_request_id(),
+        report_base=report_base,
+    ))
+
+
+async def _prov_get_report_criteria(cp):
+    logging.info(f"Provisioning: GetReport(Problem then Available) for {cp.id}")
+    evse_id = CONFIGURED_EVSE_ID
+    cv = [{'component': {'name': 'EVSE', 'evse': {'id': evse_id}},
+           'variable': {'name': 'AvailabilityState'}}]
+
+    await cp.call(call.GetReport(
+        request_id=_next_request_id(),
+        component_criteria=['Problem'],
+        component_variable=cv,
+    ))
+    await asyncio.sleep(0.5)
+    await cp.call(call.GetReport(
+        request_id=_next_request_id(),
+        component_criteria=['Available'],
+        component_variable=cv,
+    ))
+
+
+async def _prov_reset(cp, reset_type, evse_id):
+    logging.info(f"Provisioning: Reset({reset_type}, evse_id={evse_id}) for {cp.id}")
+    kwargs = {'type': reset_type}
+    if evse_id is not None:
+        kwargs['evse_id'] = evse_id
+    try:
+        await asyncio.wait_for(cp.call(call.Reset(**kwargs)), timeout=10)
+    except (asyncio.TimeoutError, Exception) as e:
+        logging.warning(f"Reset call did not complete for {cp.id}: {e}")
+
+
+async def _prov_trigger_boot(cp):
+    logging.info(f"Provisioning: TriggerMessage(BootNotification) for {cp.id}")
+    await cp.call(call.TriggerMessage(requested_message='BootNotification'))
+
+
+async def _prov_set_network_profile(cp):
+    logging.info(f"Provisioning: SetNetworkProfile for {cp.id}")
+    await cp.call(call.SetNetworkProfile(
+        configuration_slot=CONFIGURED_CONFIGURATION_SLOT,
+        connection_data={
+            'ocpp_version': 'OCPP20',
+            'ocpp_transport': 'JSON',
+            'ocpp_csms_url': CONFIGURED_OCPP_CSMS_URL,
+            'message_timeout': CONFIGURED_MESSAGE_TIMEOUT_B,
+            'security_profile': CONFIGURED_SECURITY_PROFILE,
+            'ocpp_interface': CONFIGURED_OCPP_INTERFACE,
+        },
+    ))
 
 
 # ─── Test Mode Actions ───────────────────────────────────────────────────────
@@ -410,6 +675,10 @@ async def auto_detect_and_execute(cp, security_profile):
 
     action = actions[counter]
     _auto_action_counter[key] = counter + 1
+
+    global _auto_detect_used
+    _auto_detect_used = True
+
     logging.info(f"Auto-detect: {cp.id} SP{security_profile} action #{counter} -> {action}")
 
     try:
@@ -683,8 +952,20 @@ def _unauthorized_response():
 # ─── WS Server (Port 9000, SP1: Basic Auth) ─────────────────────────────────
 
 async def ws_process_request(path, request_headers):
-    """Validate Basic Auth for the WS (non-TLS) server."""
+    """Validate Basic Auth and subprotocol for the WS (non-TLS) server."""
     cp_id = path.strip('/')
+
+    # Reject unsupported WebSocket subprotocol at HTTP level
+    requested_protocols = request_headers.get('Sec-WebSocket-Protocol', '')
+    if requested_protocols:
+        protos = [p.strip() for p in requested_protocols.split(',')]
+        if 'ocpp2.0.1' not in protos:
+            logging.warning(f"WS: Unsupported subprotocol(s) from {cp_id}: {protos}")
+            return (
+                http.HTTPStatus.BAD_REQUEST,
+                [],
+                b'Unsupported WebSocket subprotocol\n',
+            )
 
     # Reject if CP has been upgraded beyond SP1
     min_sp = cp_min_security_profile.get(cp_id, 1)
@@ -714,6 +995,7 @@ async def on_connect_ws(websocket, path):
 
     cp_id = path.strip('/')
     cp = ChargePointHandler(cp_id, websocket)
+    cp._security_profile = 1
 
     test_mode = get_test_mode_for_cp(cp_id)
     if test_mode:
@@ -772,6 +1054,7 @@ async def on_connect_wss(websocket, path):
     security_profile = 2 if auth_header else 3
 
     cp = ChargePointHandler(cp_id, websocket)
+    cp._security_profile = security_profile
 
     test_mode = get_test_mode_for_cp(cp_id)
     if test_mode:
