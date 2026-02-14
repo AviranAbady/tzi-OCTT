@@ -57,6 +57,7 @@ Reactive handlers (always active, no test mode needed):
   - SecurityEventNotification
   - Authorize (token lookup from TOKEN_DATABASE)
   - TransactionEvent (token lookup if id_token present)
+  - MeterValues, LogStatusNotification, FirmwareStatusNotification
 
 Token database:
   Hardcoded token entries used by Authorize/TransactionEvent handlers.
@@ -123,11 +124,17 @@ OCPP_INTERFACE = os.environ.get('CSMS_OCPP_INTERFACE', 'Wired0')
 
 # Provisioning configuration (B tests)
 CONFIGURED_EVSE_ID = int(os.environ.get('CONFIGURED_EVSE_ID', '1'))
+CONFIGURED_CONNECTOR_ID = int(os.environ.get('CONFIGURED_CONNECTOR_ID', '1'))
 CONFIGURED_CONFIGURATION_SLOT = int(os.environ.get('CONFIGURED_CONFIGURATION_SLOT', '1'))
 CONFIGURED_SECURITY_PROFILE = int(os.environ.get('CONFIGURED_SECURITY_PROFILE', '2'))
 CONFIGURED_OCPP_CSMS_URL = os.environ.get('CONFIGURED_OCPP_CSMS_URL', 'wss://localhost:8082')
 CONFIGURED_OCPP_INTERFACE = os.environ.get('CONFIGURED_OCPP_INTERFACE', 'Wired0')
 CONFIGURED_MESSAGE_TIMEOUT_B = int(os.environ.get('CONFIGURED_MESSAGE_TIMEOUT', '30'))
+
+# F-test configuration
+VALID_ID_TOKEN = os.environ.get('VALID_ID_TOKEN', '100000C01')
+VALID_ID_TOKEN_TYPE = os.environ.get('VALID_ID_TOKEN_TYPE', 'Central')
+BASIC_AUTH_CP_F = os.environ.get('BASIC_AUTH_CP_F', 'CP_F')
 
 # ─── Token Database ──────────────────────────────────────────────────────────
 
@@ -283,6 +290,30 @@ _SP1_E_PROVISIONING = [
     ('silent', 'get_transaction_status_no_id'),          # E_34
 ]
 
+# F-test session detection and provisioning (remote control tests)
+_f_mode_active = set()          # CP IDs in F-test mode
+_f_action_index = {}            # cp_id -> next action index
+_f_pending_action_task = {}     # cp_id -> asyncio.Task for delayed action
+_f_remote_start_id = 0          # Global counter for remote start IDs
+
+_SP1_F_PROVISIONING = [
+    'request_start_transaction',          # F_01
+    'request_start_transaction',          # F_02
+    'request_start_transaction',          # F_03
+    'request_start_transaction',          # F_04
+    'unlock_connector',                   # F_06
+    'trigger_meter_values_evse',          # F_11
+    'trigger_meter_values_all',           # F_12
+    'trigger_transaction_event_evse',     # F_13
+    'trigger_transaction_event_all',      # F_14
+    'trigger_log_status',                 # F_15
+    'trigger_firmware_status',            # F_18
+    'trigger_heartbeat',                  # F_20
+    'trigger_status_notification_evse',   # F_23
+    'trigger_status_notification_evse',   # F_24
+    'trigger_heartbeat',                  # F_27
+]
+
 
 # ─── Per-CP Test Mode ───────────────────────────────────────────────────────
 
@@ -339,6 +370,7 @@ class ChargePointHandler(ChargePoint):
         self._any_message_received = asyncio.Event()
         self._security_profile = 1
         self._boot_status = None
+        self._f_action_fired_for_session = False
 
     async def route_message(self, raw_msg):
         """Override to track when any message is received from this CP."""
@@ -346,7 +378,18 @@ class ChargePointHandler(ChargePoint):
         # Cancel any pending E-mode delayed action (new message = CP is still active)
         if self.id in _e_pending_action_task:
             _e_pending_action_task.pop(self.id).cancel()
-        return await super().route_message(raw_msg)
+        # Cancel any pending F-mode delayed action (new message = CP is still sending)
+        if self.id in _f_pending_action_task:
+            _f_pending_action_task.pop(self.id).cancel()
+        result = await super().route_message(raw_msg)
+        # Reschedule F-mode action after message processing (silence detection)
+        if self.id in _f_mode_active and not self._f_action_fired_for_session:
+            idx = _f_action_index.get(self.id, 0)
+            if idx < len(_SP1_F_PROVISIONING):
+                _f_pending_action_task[self.id] = asyncio.create_task(
+                    _delayed_f_action(self, idx)
+                )
+        return result
 
     @on(Action.boot_notification)
     async def on_boot_notification(self, charging_station, reason, **kwargs):
@@ -357,6 +400,16 @@ class ChargePointHandler(ChargePoint):
         # (only when auto-detect no-boot actions have NOT been used,
         # i.e., this is a provisioning-focused session like B tests)
         if self._security_profile == 1 and self.id not in _auto_detect_used:
+            # F-mode: always Accepted, action triggered by silence detection
+            if self.id in _f_mode_active:
+                self._boot_status = 'Accepted'
+                logging.info(f"F-mode boot for {self.id}: Accepted")
+                return call_result.BootNotification(
+                    current_time=now_iso(),
+                    interval=10,
+                    status=RegistrationStatusEnumType.accepted,
+                )
+
             # D-mode: use D-specific provisioning list
             if self.id in _d_mode_active:
                 d_counter = _d_boot_counter.get(self.id, 0)
@@ -413,27 +466,46 @@ class ChargePointHandler(ChargePoint):
         )
 
     async def _detect_d_session(self):
-        """Detect if this is a D-test session.
+        """Detect if this is a D-test or F-test session.
 
         After the first boot with Accepted + no action, wait briefly.
         If no second boot has arrived (B tests would have reconnected by now),
-        switch to D mode and fire the first D action.
+        determine session type:
+        - F-mode: CP ID matches BASIC_AUTH_CP_F (remote control tests)
+        - D-mode: default for other CPs (local list tests)
         """
-        await asyncio.sleep(4)  # B_01 disconnects quickly; D_01 stays connected
+        await asyncio.sleep(4)  # B_01 disconnects quickly; D/F_01 stay connected
+
+        # Already detected as F-mode (shouldn't happen, but be safe)
+        if self.id in _f_mode_active:
+            logging.info(f"Session detection: already F-mode for {self.id}")
+            return
 
         # Check if a second boot has been received (B-test pattern)
         boot_count = _sp1_boot_counter.get(self.id, 0)
         if boot_count > 1:
-            # Second boot already arrived - this is a B session
-            logging.info(f"D-mode detection: second boot already arrived for {self.id} - B session")
+            logging.info(f"Session detection: second boot already arrived for {self.id} - B session")
             return
 
         # Check if connection is still open
         if not self._connection.open:
-            logging.info(f"D-mode detection: connection closed for {self.id} - B session")
+            logging.info(f"Session detection: connection closed for {self.id} - B session")
             return
 
-        # No second boot and still connected: this is a D session
+        # No second boot and still connected: determine session type
+        if BASIC_AUTH_CP_F and self.id == BASIC_AUTH_CP_F:
+            # F-mode: remote control test session
+            _f_mode_active.add(self.id)
+            _f_action_index.setdefault(self.id, 0)
+            logging.info(f"F-mode detected for {self.id} - scheduling first F action")
+            idx = _f_action_index[self.id]
+            if idx < len(_SP1_F_PROVISIONING):
+                _f_pending_action_task[self.id] = asyncio.create_task(
+                    _delayed_f_action(self, idx)
+                )
+            return
+
+        # D-mode: local list test session
         _d_mode_active.add(self.id)
         _d_boot_counter[self.id] = 1  # First D boot already processed
         logging.info(f"D-mode detected for {self.id} - firing first D action")
@@ -584,6 +656,21 @@ class ChargePointHandler(ChargePoint):
     async def on_security_event_notification(self, type, timestamp, **kwargs):
         logging.info(f"SecurityEventNotification from {self.id}: type={type}")
         return call_result.SecurityEventNotification()
+
+    @on(Action.meter_values)
+    async def on_meter_values(self, evse_id, meter_value, **kwargs):
+        logging.info(f"MeterValues from {self.id}: evse_id={evse_id}")
+        return call_result.MeterValues()
+
+    @on(Action.log_status_notification)
+    async def on_log_status_notification(self, status, **kwargs):
+        logging.info(f"LogStatusNotification from {self.id}: status={status}")
+        return call_result.LogStatusNotification()
+
+    @on(Action.firmware_status_notification)
+    async def on_firmware_status_notification(self, status, **kwargs):
+        logging.info(f"FirmwareStatusNotification from {self.id}: status={status}")
+        return call_result.FirmwareStatusNotification()
 
 
 # ─── Provisioning Actions (SP1 post-boot) ────────────────────────────────────
@@ -832,6 +919,82 @@ async def _execute_e_action(cp, action, txn_id=None):
         await cp.call(call.GetTransactionStatus())
     else:
         logging.warning(f"E-mode: unknown action '{action}' or missing txn_id for {cp.id}")
+
+
+# ─── F-Mode Actions ──────────────────────────────────────────────────────────
+
+async def _delayed_f_action(cp, idx, delay=2):
+    """Execute an F-mode action after a delay of silence from the CP."""
+    try:
+        await asyncio.sleep(delay)
+        if not cp._connection.open:
+            return
+        action = _SP1_F_PROVISIONING[idx]
+        global _f_remote_start_id
+        _f_action_index[cp.id] = idx + 1
+        cp._f_action_fired_for_session = True
+        logging.info(f"F-mode action #{idx} for {cp.id}: {action}")
+        await _execute_f_action(cp, action)
+    except asyncio.CancelledError:
+        pass  # Cancelled because CP sent another message
+    except Exception as e:
+        logging.warning(f"F-mode action failed for {cp.id}: {e}")
+    finally:
+        _f_pending_action_task.pop(cp.id, None)
+
+
+async def _execute_f_action(cp, action):
+    """Execute an F-mode CSMS-initiated action."""
+    if action == 'request_start_transaction':
+        await _f_request_start_transaction(cp)
+    elif action == 'unlock_connector':
+        await _f_unlock_connector(cp)
+    elif action.startswith('trigger_'):
+        trigger_map = {
+            'trigger_meter_values_evse': ('MeterValues', {'id': CONFIGURED_EVSE_ID}),
+            'trigger_meter_values_all': ('MeterValues', None),
+            'trigger_transaction_event_evse': ('TransactionEvent', {'id': CONFIGURED_EVSE_ID}),
+            'trigger_transaction_event_all': ('TransactionEvent', None),
+            'trigger_log_status': ('LogStatusNotification', None),
+            'trigger_firmware_status': ('FirmwareStatusNotification', None),
+            'trigger_heartbeat': ('Heartbeat', None),
+            'trigger_status_notification_evse': ('StatusNotification', {'id': CONFIGURED_EVSE_ID}),
+        }
+        msg_type, evse = trigger_map.get(action, (None, None))
+        if msg_type:
+            await _f_trigger_message(cp, msg_type, evse)
+        else:
+            logging.warning(f"F-mode: unknown trigger action '{action}' for {cp.id}")
+    else:
+        logging.warning(f"F-mode: unknown action '{action}' for {cp.id}")
+
+
+async def _f_request_start_transaction(cp):
+    global _f_remote_start_id
+    _f_remote_start_id += 1
+    logging.info(f"Sending RequestStartTransaction to {cp.id} "
+                 f"(remote_start_id={_f_remote_start_id})")
+    await cp.call(call.RequestStartTransaction(
+        id_token={'id_token': VALID_ID_TOKEN, 'type': VALID_ID_TOKEN_TYPE},
+        remote_start_id=_f_remote_start_id,
+    ))
+
+
+async def _f_unlock_connector(cp):
+    logging.info(f"Sending UnlockConnector to {cp.id} "
+                 f"(evse_id={CONFIGURED_EVSE_ID}, connector_id={CONFIGURED_CONNECTOR_ID})")
+    await cp.call(call.UnlockConnector(
+        evse_id=CONFIGURED_EVSE_ID,
+        connector_id=CONFIGURED_CONNECTOR_ID,
+    ))
+
+
+async def _f_trigger_message(cp, requested_message, evse=None):
+    logging.info(f"Sending TriggerMessage({requested_message}, evse={evse}) to {cp.id}")
+    kwargs = {'requested_message': requested_message}
+    if evse is not None:
+        kwargs['evse'] = evse
+    await cp.call(call.TriggerMessage(**kwargs))
 
 
 # ─── Test Mode Actions ───────────────────────────────────────────────────────
