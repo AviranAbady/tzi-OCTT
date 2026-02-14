@@ -213,11 +213,6 @@ _reactive_mode_detected = set()
 _auto_action_counter_c = {}  # Separate counter for C-session SP1 actions
 _AUTO_SP1_ACTIONS_C = ['clear_cache', 'clear_cache']
 
-# D-test session detection: after first boot with no action, a deferred check
-# determines if this is a D-test session (CP stays connected, no second boot).
-_d_mode_active = set()  # CP IDs in D-test mode
-_d_boot_counter = {}  # cp_id -> boot count in D mode
-
 _SP1_PROVISIONING = [
     # Boot/registration
     ('Accepted', None),
@@ -254,16 +249,6 @@ _SP1_PROVISIONING = [
     # Network profile
     ('Accepted', 'set_network_profile'),
     ('Accepted', 'set_network_profile'),
-]
-
-# D-test provisioning: each boot gets Accepted + an action
-_SP1_D_PROVISIONING = [
-    ('Accepted', 'send_local_list_full'),
-    ('Accepted', 'send_local_list_diff_update'),
-    ('Accepted', 'send_local_list_diff_remove'),
-    ('Accepted', 'send_local_list_full_empty'),
-    ('Accepted', 'get_local_list_version'),
-    ('Accepted', 'get_local_list_version'),
 ]
 
 # E-test transaction tracking and provisioning
@@ -312,6 +297,35 @@ _SP1_F_PROVISIONING = [
     'trigger_status_notification_evse',   # F_23
     'trigger_status_notification_evse',   # F_24
     'trigger_heartbeat',                  # F_27
+]
+
+# Post-provisioning mode: unified queue for CPs that don't match F session type.
+# Contains D (local list) actions followed by G (availability) actions.
+# A single global index advances each time any CP fires an action, so
+# sequential test suites (D -> G) naturally consume the right actions.
+_post_prov_mode_active = set()          # CP IDs in post-provisioning mode
+_post_prov_global_index = 0             # Global action index (shared across all CPs)
+_post_prov_pending_task = {}            # cp_id -> asyncio.Task for delayed action
+
+_POST_PROVISIONING_ACTIONS = [
+    # Local list management (D tests)
+    'send_local_list_full',
+    'send_local_list_diff_update',
+    'send_local_list_diff_remove',
+    'send_local_list_full_empty',
+    'get_local_list_version',
+    'get_local_list_version',
+    # Availability management (G tests)
+    'change_availability_evse_inoperative',
+    'change_availability_evse_operative',
+    'change_availability_station_inoperative',
+    'change_availability_station_operative',
+    'change_availability_connector_inoperative',
+    'change_availability_connector_operative',
+    'change_availability_evse_inoperative',
+    'change_availability_station_inoperative',
+    'change_availability_connector_inoperative',
+    None,
 ]
 
 
@@ -371,6 +385,7 @@ class ChargePointHandler(ChargePoint):
         self._security_profile = 1
         self._boot_status = None
         self._f_action_fired_for_session = False
+        self._post_prov_action_fired_for_session = False
 
     async def route_message(self, raw_msg):
         """Override to track when any message is received from this CP."""
@@ -381,6 +396,9 @@ class ChargePointHandler(ChargePoint):
         # Cancel any pending F-mode delayed action (new message = CP is still sending)
         if self.id in _f_pending_action_task:
             _f_pending_action_task.pop(self.id).cancel()
+        # Cancel any pending post-provisioning action (new message = CP is still sending)
+        if self.id in _post_prov_pending_task:
+            _post_prov_pending_task.pop(self.id).cancel()
         result = await super().route_message(raw_msg)
         # Reschedule F-mode action after message processing (silence detection)
         if self.id in _f_mode_active and not self._f_action_fired_for_session:
@@ -389,6 +407,15 @@ class ChargePointHandler(ChargePoint):
                 _f_pending_action_task[self.id] = asyncio.create_task(
                     _delayed_f_action(self, idx)
                 )
+        # Reschedule post-provisioning action (silence detection)
+        if self.id in _post_prov_mode_active and not self._post_prov_action_fired_for_session:
+            idx = _post_prov_global_index
+            if idx < len(_POST_PROVISIONING_ACTIONS):
+                action = _POST_PROVISIONING_ACTIONS[idx]
+                if action is not None:
+                    _post_prov_pending_task[self.id] = asyncio.create_task(
+                        _delayed_post_prov_action(self)
+                    )
         return result
 
     @on(Action.boot_notification)
@@ -400,6 +427,16 @@ class ChargePointHandler(ChargePoint):
         # (only when auto-detect no-boot actions have NOT been used,
         # i.e., this is a provisioning-focused session like B tests)
         if self._security_profile == 1 and self.id not in _auto_detect_used:
+            # Post-provisioning mode: always Accepted, action triggered by silence
+            if self.id in _post_prov_mode_active:
+                self._boot_status = 'Accepted'
+                logging.info(f"Post-provisioning boot for {self.id}: Accepted")
+                return call_result.BootNotification(
+                    current_time=now_iso(),
+                    interval=10,
+                    status=RegistrationStatusEnumType.accepted,
+                )
+
             # F-mode: always Accepted, action triggered by silence detection
             if self.id in _f_mode_active:
                 self._boot_status = 'Accepted'
@@ -408,27 +445,6 @@ class ChargePointHandler(ChargePoint):
                     current_time=now_iso(),
                     interval=10,
                     status=RegistrationStatusEnumType.accepted,
-                )
-
-            # D-mode: use D-specific provisioning list
-            if self.id in _d_mode_active:
-                d_counter = _d_boot_counter.get(self.id, 0)
-                _d_boot_counter[self.id] = d_counter + 1
-
-                if d_counter < len(_SP1_D_PROVISIONING):
-                    boot_status, action = _SP1_D_PROVISIONING[d_counter]
-                else:
-                    boot_status, action = ('Accepted', None)
-
-                self._boot_status = boot_status
-                if action:
-                    asyncio.create_task(self._execute_provisioning(action))
-
-                logging.info(f"D-mode provisioning boot #{d_counter}: {boot_status}, action={action}")
-                return call_result.BootNotification(
-                    current_time=now_iso(),
-                    interval=10,
-                    status=getattr(RegistrationStatusEnumType, boot_status.lower()),
                 )
 
             # B-mode: use standard provisioning list
@@ -446,9 +462,9 @@ class ChargePointHandler(ChargePoint):
             if action:
                 asyncio.create_task(self._execute_provisioning(action))
 
-            # First boot with no action: schedule D-mode detection
+            # First boot with no action: schedule session type detection
             if counter == 0 and action is None and boot_status == 'Accepted':
-                asyncio.create_task(self._detect_d_session())
+                asyncio.create_task(self._detect_session_type())
 
             logging.info(f"SP1 provisioning boot #{counter}: {boot_status}, action={action}")
             return call_result.BootNotification(
@@ -465,18 +481,21 @@ class ChargePointHandler(ChargePoint):
             status=RegistrationStatusEnumType.accepted
         )
 
-    async def _detect_d_session(self):
-        """Detect if this is a D-test or F-test session.
+    async def _detect_session_type(self):
+        """Detect the session type after the first boot.
 
         After the first boot with Accepted + no action, wait briefly.
         If no second boot has arrived (B tests would have reconnected by now),
         determine session type:
         - F-mode: CP ID matches BASIC_AUTH_CP_F (remote control tests)
-        - D-mode: default for other CPs (local list tests)
+        - Post-provisioning: default for all other CPs (unified D + G queue)
         """
-        await asyncio.sleep(4)  # B_01 disconnects quickly; D/F_01 stay connected
+        await asyncio.sleep(4)  # B_01 disconnects quickly; D/F/G stay connected
 
-        # Already detected as F-mode (shouldn't happen, but be safe)
+        # Already detected (shouldn't happen, but be safe)
+        if self.id in _post_prov_mode_active:
+            logging.info(f"Session detection: already post-prov mode for {self.id}")
+            return
         if self.id in _f_mode_active:
             logging.info(f"Session detection: already F-mode for {self.id}")
             return
@@ -505,17 +524,14 @@ class ChargePointHandler(ChargePoint):
                 )
             return
 
-        # D-mode: local list test session
-        _d_mode_active.add(self.id)
-        _d_boot_counter[self.id] = 1  # First D boot already processed
-        logging.info(f"D-mode detected for {self.id} - firing first D action")
-
-        try:
-            action = _SP1_D_PROVISIONING[0][1]
-            if action:
-                await _dispatch_provisioning(self, action)
-        except Exception as e:
-            logging.warning(f"D-mode first action failed for {self.id}: {e}")
+        # Default: post-provisioning mode (unified D + G action queue)
+        _post_prov_mode_active.add(self.id)
+        idx = _post_prov_global_index
+        logging.info(f"Post-provisioning mode detected for {self.id} - scheduling action #{idx}")
+        if idx < len(_POST_PROVISIONING_ACTIONS) and _POST_PROVISIONING_ACTIONS[idx] is not None:
+            _post_prov_pending_task[self.id] = asyncio.create_task(
+                _delayed_post_prov_action(self)
+            )
 
     async def _execute_provisioning(self, action):
         """Execute a provisioning action after a short delay."""
@@ -706,6 +722,12 @@ async def _dispatch_provisioning(cp, action):
         'send_local_list_diff_remove': _prov_send_local_list_diff_remove,
         'send_local_list_full_empty': _prov_send_local_list_full_empty,
         'get_local_list_version': _prov_get_local_list_version,
+        'change_availability_evse_inoperative': lambda cp: _prov_change_availability(cp, 'Inoperative', 'evse'),
+        'change_availability_evse_operative': lambda cp: _prov_change_availability(cp, 'Operative', 'evse'),
+        'change_availability_station_inoperative': lambda cp: _prov_change_availability(cp, 'Inoperative', 'station'),
+        'change_availability_station_operative': lambda cp: _prov_change_availability(cp, 'Operative', 'station'),
+        'change_availability_connector_inoperative': lambda cp: _prov_change_availability(cp, 'Inoperative', 'connector'),
+        'change_availability_connector_operative': lambda cp: _prov_change_availability(cp, 'Operative', 'connector'),
     }
     handler = dispatch.get(action)
     if handler:
@@ -886,6 +908,18 @@ async def _prov_get_local_list_version(cp):
     await cp.call(call.GetLocalListVersion())
 
 
+async def _prov_change_availability(cp, op_status, target):
+    """Send ChangeAvailabilityRequest with the given status and target level."""
+    kwargs = {'operational_status': op_status}
+    if target == 'connector':
+        kwargs['evse'] = {'id': CONFIGURED_EVSE_ID, 'connector_id': CONFIGURED_CONNECTOR_ID}
+    elif target == 'evse':
+        kwargs['evse'] = {'id': CONFIGURED_EVSE_ID}
+    # station-level: no evse parameter
+    logging.info(f"Provisioning: ChangeAvailability({op_status}, {target}) for {cp.id}")
+    await cp.call(call.ChangeAvailability(**kwargs))
+
+
 # ─── E-Mode Actions ──────────────────────────────────────────────────────────
 
 async def _delayed_e_action(cp, action, idx, delay=3):
@@ -995,6 +1029,42 @@ async def _f_trigger_message(cp, requested_message, evse=None):
     if evse is not None:
         kwargs['evse'] = evse
     await cp.call(call.TriggerMessage(**kwargs))
+
+
+# ─── Post-Provisioning Actions ────────────────────────────────────────────────
+
+async def _delayed_post_prov_action(cp, delay=2):
+    """Execute a post-provisioning action after a delay of silence from the CP."""
+    global _post_prov_global_index
+    this_task = asyncio.current_task()
+    try:
+        await asyncio.sleep(delay)
+        if not cp._connection.open:
+            return
+        idx = _post_prov_global_index
+        if idx >= len(_POST_PROVISIONING_ACTIONS):
+            return
+        action = _POST_PROVISIONING_ACTIONS[idx]
+        if action is None:
+            return
+        _post_prov_global_index = idx + 1
+        cp._post_prov_action_fired_for_session = True
+        # Remove from pending dict before executing to prevent route_message
+        # from cancelling this task mid-execution (cp.call responses go through
+        # route_message which would cancel the still-running task).
+        if _post_prov_pending_task.get(cp.id) is this_task:
+            del _post_prov_pending_task[cp.id]
+        logging.info(f"Post-provisioning action #{idx} for {cp.id}: {action}")
+        await _dispatch_provisioning(cp, action)
+    except asyncio.CancelledError:
+        pass  # Cancelled because CP sent another message
+    except Exception as e:
+        logging.warning(f"Post-provisioning action failed for {cp.id}: {e}")
+    finally:
+        # Only clean up if we're still the registered task (prevents race
+        # where a new session's task gets removed by a finishing old task).
+        if _post_prov_pending_task.get(cp.id) is this_task:
+            del _post_prov_pending_task[cp.id]
 
 
 # ─── Test Mode Actions ───────────────────────────────────────────────────────
