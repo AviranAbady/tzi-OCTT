@@ -53,12 +53,12 @@ from utils import get_basic_auth_headers
 
 logging.basicConfig(level=logging.INFO)
 
-CSMS_ADDRESS = os.environ.get('CSMS_ADDRESS', 'ws://localhost:9000')
-BASIC_AUTH_CP = os.environ.get('BASIC_AUTH_CP', 'CP_1')
-BASIC_AUTH_CP_PASSWORD = os.environ.get('BASIC_AUTH_CP_PASSWORD', '0123456789123456')
-CONNECTOR_ID = int(os.environ.get('CONFIGURED_CONNECTOR_ID', '1'))
-CONFIGURED_VENDOR_ID = os.environ.get('CONFIGURED_VENDOR_ID', 'tzi.app')
-CONFIGURED_MESSAGE_ID = os.environ.get('CONFIGURED_MESSAGE_ID', 'TestMessage')
+CSMS_ADDRESS = os.environ['CSMS_ADDRESS']
+BASIC_AUTH_CP = os.environ['BASIC_AUTH_CP']
+BASIC_AUTH_CP_PASSWORD = os.environ['BASIC_AUTH_CP_PASSWORD']
+CONNECTOR_ID = int(os.environ['CONFIGURED_CONNECTOR_ID'])
+CONFIGURED_VENDOR_ID = os.environ['CONFIGURED_VENDOR_ID']
+CONFIGURED_MESSAGE_ID = os.environ['CONFIGURED_MESSAGE_ID']
 
 ALLOWED_STATUSES = {
     DataTransferStatusEnumType.unknown_vendor_id,

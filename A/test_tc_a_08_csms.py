@@ -86,13 +86,13 @@ from utils import create_ssl_context
 
 logging.basicConfig(level=logging.INFO)
 
-CSMS_WSS_ADDRESS = os.environ.get('CSMS_WSS_ADDRESS')
-TLS_CA_CERT = os.environ.get('TLS_CA_CERT')
-TLS_CLIENT_CERT = os.environ.get('TLS_CLIENT_CERT')
-TLS_CLIENT_KEY = os.environ.get('TLS_CLIENT_KEY')
-TLS_INVALID_CLIENT_CERT = os.environ.get('TLS_INVALID_CLIENT_CERT')
-TLS_INVALID_CLIENT_KEY = os.environ.get('TLS_INVALID_CLIENT_KEY')
-SECURITY_PROFILE_3_CP = os.environ.get('SECURITY_PROFILE_3_CP')
+CSMS_WSS_ADDRESS = os.environ['CSMS_WSS_ADDRESS']
+TLS_CA_CERT = os.environ['TLS_CA_CERT']
+TLS_CLIENT_CERT = os.environ['TLS_CLIENT_CERT']
+TLS_CLIENT_KEY = os.environ['TLS_CLIENT_KEY']
+TLS_INVALID_CLIENT_CERT = os.environ['TLS_INVALID_CLIENT_CERT']
+TLS_INVALID_CLIENT_KEY = os.environ['TLS_INVALID_CLIENT_KEY']
+SECURITY_PROFILE_3_CP = os.environ['SECURITY_PROFILE_3_CP']
 
 
 @pytest.mark.asyncio

@@ -5,7 +5,7 @@ from websockets import InvalidStatusCode
 from dataclasses import dataclass
 import time
 
-CSMS_ADDRESS = os.environ.get('CSMS_ADDRESS', None)
+CSMS_ADDRESS = os.environ['CSMS_ADDRESS']
 
 @dataclass
 class MockConnection:
@@ -14,8 +14,6 @@ class MockConnection:
 
 @pytest_asyncio.fixture
 async def connection(request):
-    if not CSMS_ADDRESS:
-        raise Exception("CSMS_ADDRESS NOT SET - check pytest.ini")
     cp_name, headers = request.param
     try:
         uri = f'{CSMS_ADDRESS}/{cp_name}'

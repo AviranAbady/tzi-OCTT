@@ -41,13 +41,13 @@ from reusable_states.authorized import authorized
 from reusable_states.energy_transfer_started import energy_transfer_started
 from reusable_states.energy_transfer_suspended import energy_transfer_suspended
 
-CSMS_ADDRESS = os.environ.get('CSMS_ADDRESS', 'ws://localhost:8081')
-BASIC_AUTH_CP = os.environ.get('BASIC_AUTH_CP', 'CP_1')
-BASIC_AUTH_CP_PASSWORD = os.environ.get('BASIC_AUTH_CP_PASSWORD', '0123456789123456')
-VALID_ID_TOKEN = os.environ.get('VALID_ID_TOKEN', '100000C01')
-VALID_ID_TOKEN_TYPE = os.environ.get('VALID_ID_TOKEN_TYPE', 'Central')
-EVSE_ID = int(os.environ.get('CONFIGURED_EVSE_ID', '1'))
-CONNECTOR_ID = int(os.environ.get('CONFIGURED_CONNECTOR_ID', '1'))
+CSMS_ADDRESS = os.environ['CSMS_ADDRESS']
+BASIC_AUTH_CP = os.environ['BASIC_AUTH_CP']
+BASIC_AUTH_CP_PASSWORD = os.environ['BASIC_AUTH_CP_PASSWORD']
+VALID_ID_TOKEN = os.environ['VALID_ID_TOKEN']
+VALID_ID_TOKEN_TYPE = os.environ['VALID_ID_TOKEN_TYPE']
+EVSE_ID = int(os.environ['CONFIGURED_EVSE_ID'])
+CONNECTOR_ID = int(os.environ['CONFIGURED_CONNECTOR_ID'])
 
 
 @pytest.mark.asyncio

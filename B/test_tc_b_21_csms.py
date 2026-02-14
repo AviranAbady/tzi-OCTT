@@ -64,14 +64,14 @@ from utils import get_basic_auth_headers, generate_transaction_id, now_iso
 
 logging.basicConfig(level=logging.INFO)
 
-CSMS_ADDRESS = os.environ.get('CSMS_ADDRESS')
-BASIC_AUTH_CP = os.environ.get('BASIC_AUTH_CP')
-BASIC_AUTH_CP_PASSWORD = os.environ.get('BASIC_AUTH_CP_PASSWORD')
-CSMS_ACTION_TIMEOUT = int(os.environ.get('CSMS_ACTION_TIMEOUT', '30'))
-CONFIGURED_EVSE_ID = int(os.environ.get('CONFIGURED_EVSE_ID', '1'))
-CONFIGURED_CONNECTOR_ID = int(os.environ.get('CONFIGURED_CONNECTOR_ID', '1'))
-VALID_ID_TOKEN = os.environ.get('VALID_ID_TOKEN', '100000C01')
-VALID_ID_TOKEN_TYPE = os.environ.get('VALID_ID_TOKEN_TYPE', 'Central')
+CSMS_ADDRESS = os.environ['CSMS_ADDRESS']
+BASIC_AUTH_CP = os.environ['BASIC_AUTH_CP']
+BASIC_AUTH_CP_PASSWORD = os.environ['BASIC_AUTH_CP_PASSWORD']
+CSMS_ACTION_TIMEOUT = int(os.environ['CSMS_ACTION_TIMEOUT'])
+CONFIGURED_EVSE_ID = int(os.environ['CONFIGURED_EVSE_ID'])
+CONFIGURED_CONNECTOR_ID = int(os.environ['CONFIGURED_CONNECTOR_ID'])
+VALID_ID_TOKEN = os.environ['VALID_ID_TOKEN']
+VALID_ID_TOKEN_TYPE = os.environ['VALID_ID_TOKEN_TYPE']
 
 
 @pytest.mark.asyncio

@@ -40,9 +40,9 @@ from ocpp.v201.enums import RegistrationStatusEnumType, ConnectorStatusEnumType
 from tzi_charge_point import TziChargePoint
 from utils import get_basic_auth_headers, validate_schema
 
-CSMS_ADDRESS = os.environ.get('CSMS_ADDRESS')
-BASIC_AUTH_CP = os.environ.get('BASIC_AUTH_CP')
-BASIC_AUTH_CP_PASSWORD = os.environ.get('BASIC_AUTH_CP_PASSWORD')
+CSMS_ADDRESS = os.environ['CSMS_ADDRESS']
+BASIC_AUTH_CP = os.environ['BASIC_AUTH_CP']
+BASIC_AUTH_CP_PASSWORD = os.environ['BASIC_AUTH_CP_PASSWORD']
 
 
 @pytest.mark.asyncio

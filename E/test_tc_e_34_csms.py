@@ -32,10 +32,10 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from tzi_charge_point import TziChargePoint
 from utils import get_basic_auth_headers
 
-CSMS_ADDRESS = os.environ.get('CSMS_ADDRESS', 'ws://localhost:8081')
-BASIC_AUTH_CP = os.environ.get('BASIC_AUTH_CP', 'CP_1')
-BASIC_AUTH_CP_PASSWORD = os.environ.get('BASIC_AUTH_CP_PASSWORD', '0123456789123456')
-CSMS_ACTION_TIMEOUT = int(os.environ.get('CSMS_ACTION_TIMEOUT', '30'))
+CSMS_ADDRESS = os.environ['CSMS_ADDRESS']
+BASIC_AUTH_CP = os.environ['BASIC_AUTH_CP']
+BASIC_AUTH_CP_PASSWORD = os.environ['BASIC_AUTH_CP_PASSWORD']
+CSMS_ACTION_TIMEOUT = int(os.environ['CSMS_ACTION_TIMEOUT'])
 
 
 @pytest.mark.asyncio

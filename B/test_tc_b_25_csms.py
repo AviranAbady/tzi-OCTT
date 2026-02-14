@@ -47,11 +47,11 @@ from utils import get_basic_auth_headers
 
 logging.basicConfig(level=logging.INFO)
 
-CSMS_ADDRESS = os.environ.get('CSMS_ADDRESS')
-BASIC_AUTH_CP = os.environ.get('BASIC_AUTH_CP')
-BASIC_AUTH_CP_PASSWORD = os.environ.get('BASIC_AUTH_CP_PASSWORD')
-CSMS_ACTION_TIMEOUT = int(os.environ.get('CSMS_ACTION_TIMEOUT', '30'))
-CONFIGURED_EVSE_ID = int(os.environ.get('CONFIGURED_EVSE_ID', '1'))
+CSMS_ADDRESS = os.environ['CSMS_ADDRESS']
+BASIC_AUTH_CP = os.environ['BASIC_AUTH_CP']
+BASIC_AUTH_CP_PASSWORD = os.environ['BASIC_AUTH_CP_PASSWORD']
+CSMS_ACTION_TIMEOUT = int(os.environ['CSMS_ACTION_TIMEOUT'])
+CONFIGURED_EVSE_ID = int(os.environ['CONFIGURED_EVSE_ID'])
 
 
 @pytest.mark.asyncio

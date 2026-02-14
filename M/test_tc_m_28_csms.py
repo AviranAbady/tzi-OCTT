@@ -50,10 +50,10 @@ from utils import get_basic_auth_headers
 
 logging.basicConfig(level=logging.INFO)
 
-CSMS_ADDRESS = os.environ.get('CSMS_ADDRESS', 'ws://localhost:9000')
-BASIC_AUTH_CP = os.environ.get('BASIC_AUTH_CP', 'CP_1')
-BASIC_AUTH_CP_PASSWORD = os.environ.get('BASIC_AUTH_CP_PASSWORD', '0123456789123456')
-CONNECTOR_ID = int(os.environ.get('CONFIGURED_CONNECTOR_ID', '1'))
+CSMS_ADDRESS = os.environ['CSMS_ADDRESS']
+BASIC_AUTH_CP = os.environ['BASIC_AUTH_CP']
+BASIC_AUTH_CP_PASSWORD = os.environ['BASIC_AUTH_CP_PASSWORD']
+CONNECTOR_ID = int(os.environ['CONFIGURED_CONNECTOR_ID'])
 
 
 @pytest.mark.asyncio

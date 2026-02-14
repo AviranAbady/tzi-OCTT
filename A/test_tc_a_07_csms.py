@@ -82,11 +82,11 @@ from utils import create_ssl_context, get_tls_info
 
 logging.basicConfig(level=logging.INFO)
 
-CSMS_WSS_ADDRESS = os.environ.get('CSMS_WSS_ADDRESS')
-TLS_CA_CERT = os.environ.get('TLS_CA_CERT')
-TLS_CLIENT_CERT = os.environ.get('TLS_CLIENT_CERT')
-TLS_CLIENT_KEY = os.environ.get('TLS_CLIENT_KEY')
-SECURITY_PROFILE_3_CP = os.environ.get('SECURITY_PROFILE_3_CP')
+CSMS_WSS_ADDRESS = os.environ['CSMS_WSS_ADDRESS']
+TLS_CA_CERT = os.environ['TLS_CA_CERT']
+TLS_CLIENT_CERT = os.environ['TLS_CLIENT_CERT']
+TLS_CLIENT_KEY = os.environ['TLS_CLIENT_KEY']
+SECURITY_PROFILE_3_CP = os.environ['SECURITY_PROFILE_3_CP']
 
 ACCEPTABLE_TLS_VERSIONS = {'TLSv1.2', 'TLSv1.3'}
 REQUIRED_TLS12_CIPHERS = (

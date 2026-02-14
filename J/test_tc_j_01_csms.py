@@ -62,13 +62,13 @@ from ocpp.v201.enums import (
 from tzi_charge_point import TziChargePoint
 from utils import get_basic_auth_headers, now_iso
 
-BASIC_AUTH_CP = os.environ.get('BASIC_AUTH_CP', 'CP_1')
-BASIC_AUTH_CP_PASSWORD = os.environ.get('BASIC_AUTH_CP_PASSWORD', '0123456789123456')
-EVSE_ID = int(os.environ.get('CONFIGURED_EVSE_ID', '1'))
-CONNECTOR_ID = int(os.environ.get('CONFIGURED_CONNECTOR_ID', '1'))
+BASIC_AUTH_CP = os.environ['BASIC_AUTH_CP']
+BASIC_AUTH_CP_PASSWORD = os.environ['BASIC_AUTH_CP_PASSWORD']
+EVSE_ID = int(os.environ['CONFIGURED_EVSE_ID'])
+CONNECTOR_ID = int(os.environ['CONFIGURED_CONNECTOR_ID'])
 
 METER_VALUE_COUNT = 3
-CLOCK_ALIGNED_INTERVAL = int(os.environ.get('CLOCK_ALIGNED_METER_VALUES_INTERVAL', '1'))
+CLOCK_ALIGNED_INTERVAL = int(os.environ['CLOCK_ALIGNED_METER_VALUES_INTERVAL'])
 
 
 @pytest.mark.asyncio
