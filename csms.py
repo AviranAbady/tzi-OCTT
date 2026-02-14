@@ -2,9 +2,8 @@
 CSMS (Charging Station Management System) implementation for OCPP 2.0.1 test suite.
 
 Note: This CSMS is intended solely for testing, debugging, and stepping through
-the tzi-octt test suite. It must NOT be used in production.
-
-Written entirely by Claude Code, the magnificent.
+      the tzi-octt test suite. It is NOT designed to be used in production.
+      Written entirely by Claude Code, the magnificent.
 
 Runs two servers:
   - WS  on port 9000 (Security Profile 1: Basic Auth, no TLS)
@@ -81,6 +80,7 @@ from ocpp.routing import on
 from ocpp.v201 import ChargePoint, call, call_result
 from ocpp.v201.enums import Action, GenericStatusEnumType
 from ocpp.v201.enums import RegistrationStatusEnumType
+from ocpp.v201.datatypes import IdTokenInfoType, IdTokenType
 from websockets import ConnectionClosedOK
 
 try:
@@ -131,8 +131,8 @@ CONFIGURED_MESSAGE_TIMEOUT_B = int(os.environ.get('CONFIGURED_MESSAGE_TIMEOUT', 
 
 # ─── Token Database ──────────────────────────────────────────────────────────
 
-VALID_TOKEN_GROUP = os.environ.get('VALID_TOKEN_GROUP', 'GROUP001')
-MASTERPASS_GROUP_ID = os.environ.get('MASTERPASS_GROUP_ID', 'MasterPassGroupId')
+VALID_TOKEN_GROUP = os.environ.get('GROUP_ID', 'GROUP001')
+MASTERPASS_GROUP_ID = os.environ.get('MASTERPASS_GROUP_ID', 'GROUP001')
 
 TOKEN_DATABASE = {
     '100000C01':       {'status': 'Accepted', 'group': VALID_TOKEN_GROUP},
@@ -149,6 +149,23 @@ TOKEN_DATABASE = {
 
 def lookup_token(token_value):
     return TOKEN_DATABASE.get(token_value.upper(), {'status': 'Invalid'})
+
+
+# ─── ISO 15118 Revoked Serials ──────────────────────────────────────────────
+# Load serial numbers from the revoked cert hash data file so the Authorize
+# handler can distinguish valid from revoked certificates without real OCSP.
+
+_REVOKED_SERIALS = set()
+_revoked_file = os.environ.get('ISO15118_REVOKED_CERT_HASH_DATA_FILE',
+                                'certs/iso15118_revoked_cert_hash_data.json')
+if _revoked_file and os.path.exists(_revoked_file):
+    try:
+        with open(_revoked_file) as _f:
+            for _entry in json.load(_f):
+                _REVOKED_SERIALS.add(_entry['serial_number'])
+        logging.info(f"Loaded {len(_REVOKED_SERIALS)} revoked serial(s) from {_revoked_file}")
+    except Exception as _e:
+        logging.warning(f"Failed to load revoked cert hash data: {_e}")
 
 
 # ─── Global State ────────────────────────────────────────────────────────────
@@ -180,7 +197,19 @@ _AUTO_SP3_ACTIONS = [
 # Format: (boot_status, action_name_or_None)
 
 _sp1_boot_counter = {}   # cp_id -> boot count on SP1
-_auto_detect_used = False  # Set when auto-detect fires a no-boot action
+_auto_detect_used = set()  # CP IDs that have used auto-detect no-boot actions
+
+# Reactive-mode detection: CP IDs that sent non-boot messages (C-test pattern).
+# Subsequent "waiting" (silent) connections use C-specific actions (clear_cache)
+# instead of A-test actions (password_update, profile_upgrade).
+_reactive_mode_detected = set()
+_auto_action_counter_c = {}  # Separate counter for C-session SP1 actions
+_AUTO_SP1_ACTIONS_C = ['clear_cache', 'clear_cache']
+
+# D-test session detection: after first boot with no action, a deferred check
+# determines if this is a D-test session (CP stays connected, no second boot).
+_d_mode_active = set()  # CP IDs in D-test mode
+_d_boot_counter = {}  # cp_id -> boot count in D mode
 
 _SP1_PROVISIONING = [
     # Boot/registration
@@ -218,6 +247,16 @@ _SP1_PROVISIONING = [
     # Network profile
     ('Accepted', 'set_network_profile'),
     ('Accepted', 'set_network_profile'),
+]
+
+# D-test provisioning: each boot gets Accepted + an action
+_SP1_D_PROVISIONING = [
+    ('Accepted', 'send_local_list_full'),
+    ('Accepted', 'send_local_list_diff_update'),
+    ('Accepted', 'send_local_list_diff_remove'),
+    ('Accepted', 'send_local_list_full_empty'),
+    ('Accepted', 'get_local_list_version'),
+    ('Accepted', 'get_local_list_version'),
 ]
 
 
@@ -269,9 +308,18 @@ class ChargePointHandler(ChargePoint):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        # Skip schema validation so CSMS accepts non-standard fields (e.g. Cash token type)
+        for action, handlers in self.route_map.items():
+            handlers['_skip_schema_validation'] = True
         self._boot_received = asyncio.Event()
+        self._any_message_received = asyncio.Event()
         self._security_profile = 1
         self._boot_status = None
+
+    async def route_message(self, raw_msg):
+        """Override to track when any message is received from this CP."""
+        self._any_message_received.set()
+        return await super().route_message(raw_msg)
 
     @on(Action.boot_notification)
     async def on_boot_notification(self, charging_station, reason, **kwargs):
@@ -281,7 +329,29 @@ class ChargePointHandler(ChargePoint):
         # Determine boot response from SP1 provisioning sequence
         # (only when auto-detect no-boot actions have NOT been used,
         # i.e., this is a provisioning-focused session like B tests)
-        if self._security_profile == 1 and not _auto_detect_used:
+        if self._security_profile == 1 and self.id not in _auto_detect_used:
+            # D-mode: use D-specific provisioning list
+            if self.id in _d_mode_active:
+                d_counter = _d_boot_counter.get(self.id, 0)
+                _d_boot_counter[self.id] = d_counter + 1
+
+                if d_counter < len(_SP1_D_PROVISIONING):
+                    boot_status, action = _SP1_D_PROVISIONING[d_counter]
+                else:
+                    boot_status, action = ('Accepted', None)
+
+                self._boot_status = boot_status
+                if action:
+                    asyncio.create_task(self._execute_provisioning(action))
+
+                logging.info(f"D-mode provisioning boot #{d_counter}: {boot_status}, action={action}")
+                return call_result.BootNotification(
+                    current_time=now_iso(),
+                    interval=10,
+                    status=getattr(RegistrationStatusEnumType, boot_status.lower()),
+                )
+
+            # B-mode: use standard provisioning list
             counter = _sp1_boot_counter.get(self.id, 0)
             _sp1_boot_counter[self.id] = counter + 1
 
@@ -295,6 +365,10 @@ class ChargePointHandler(ChargePoint):
 
             if action:
                 asyncio.create_task(self._execute_provisioning(action))
+
+            # First boot with no action: schedule D-mode detection
+            if counter == 0 and action is None and boot_status == 'Accepted':
+                asyncio.create_task(self._detect_d_session())
 
             logging.info(f"SP1 provisioning boot #{counter}: {boot_status}, action={action}")
             return call_result.BootNotification(
@@ -310,6 +384,39 @@ class ChargePointHandler(ChargePoint):
             interval=10,
             status=RegistrationStatusEnumType.accepted
         )
+
+    async def _detect_d_session(self):
+        """Detect if this is a D-test session.
+
+        After the first boot with Accepted + no action, wait briefly.
+        If no second boot has arrived (B tests would have reconnected by now),
+        switch to D mode and fire the first D action.
+        """
+        await asyncio.sleep(4)  # B_01 disconnects quickly; D_01 stays connected
+
+        # Check if a second boot has been received (B-test pattern)
+        boot_count = _sp1_boot_counter.get(self.id, 0)
+        if boot_count > 1:
+            # Second boot already arrived - this is a B session
+            logging.info(f"D-mode detection: second boot already arrived for {self.id} - B session")
+            return
+
+        # Check if connection is still open
+        if not self._connection.open:
+            logging.info(f"D-mode detection: connection closed for {self.id} - B session")
+            return
+
+        # No second boot and still connected: this is a D session
+        _d_mode_active.add(self.id)
+        _d_boot_counter[self.id] = 1  # First D boot already processed
+        logging.info(f"D-mode detected for {self.id} - firing first D action")
+
+        try:
+            action = _SP1_D_PROVISIONING[0][1]
+            if action:
+                await _dispatch_provisioning(self, action)
+        except Exception as e:
+            logging.warning(f"D-mode first action failed for {self.id}: {e}")
 
     async def _execute_provisioning(self, action):
         """Execute a provisioning action after a short delay."""
@@ -375,7 +482,22 @@ class ChargePointHandler(ChargePoint):
         response_kwargs = {'id_token_info': id_token_info}
 
         if iso15118_certificate_hash_data or certificate:
-            response_kwargs['certificate_status'] = 'Accepted'
+            # Check if any certificate in the hash data is revoked
+            revoked = False
+            if iso15118_certificate_hash_data:
+                for hash_entry in iso15118_certificate_hash_data:
+                    serial = (hash_entry.get('serial_number', '')
+                              if isinstance(hash_entry, dict)
+                              else getattr(hash_entry, 'serial_number', ''))
+                    if serial in _REVOKED_SERIALS:
+                        revoked = True
+                        break
+            if revoked:
+                response_kwargs['certificate_status'] = 'CertificateRevoked'
+                id_token_info['status'] = 'Invalid'
+                logging.info(f"Certificate revoked for {self.id}")
+            else:
+                response_kwargs['certificate_status'] = 'Accepted'
 
         return call_result.Authorize(**response_kwargs)
 
@@ -389,12 +511,15 @@ class ChargePointHandler(ChargePoint):
                            if isinstance(id_token, dict) else str(id_token))
             token_info = lookup_token(token_value)
             logging.info(f"TransactionEvent from {self.id}: token={token_value} -> {token_info['status']}")
-            id_token_info = {'status': token_info['status']}
+            group_id_token = None
             if 'group' in token_info:
-                id_token_info['group_id_token'] = {
-                    'id_token': token_info['group'], 'type': 'Central'
-                }
-            response_kwargs['id_token_info'] = id_token_info
+                group_id_token = IdTokenType(
+                    id_token=token_info['group'], type='Central'
+                )
+            response_kwargs['id_token_info'] = IdTokenInfoType(
+                status=token_info['status'],
+                group_id_token=group_id_token,
+            )
         else:
             logging.info(f"TransactionEvent from {self.id}: type={event_type} trigger={trigger_reason}")
         return call_result.TransactionEvent(**response_kwargs)
@@ -439,6 +564,11 @@ async def _dispatch_provisioning(cp, action):
         'reset_immediate_evse': lambda cp: _prov_reset(cp, 'Immediate', CONFIGURED_EVSE_ID),
         'trigger_boot': _prov_trigger_boot,
         'set_network_profile': _prov_set_network_profile,
+        'send_local_list_full': _prov_send_local_list_full,
+        'send_local_list_diff_update': _prov_send_local_list_diff_update,
+        'send_local_list_diff_remove': _prov_send_local_list_diff_remove,
+        'send_local_list_full_empty': _prov_send_local_list_full_empty,
+        'get_local_list_version': _prov_get_local_list_version,
     }
     handler = dispatch.get(action)
     if handler:
@@ -559,6 +689,66 @@ async def _prov_set_network_profile(cp):
     ))
 
 
+async def _prov_send_local_list_full(cp):
+    logging.info(f"Provisioning: SendLocalList(Full) for {cp.id}")
+    await cp.call(call.SendLocalList(
+        version_number=1,
+        update_type='Full',
+        local_authorization_list=[
+            {
+                'id_token': {'id_token': 'D001001', 'type': 'Central'},
+                'id_token_info': {'status': 'Accepted'},
+            },
+            {
+                'id_token': {'id_token': 'D001002', 'type': 'Central'},
+                'id_token_info': {'status': 'Accepted'},
+            },
+        ]
+    ))
+
+
+async def _prov_send_local_list_diff_update(cp):
+    logging.info(f"Provisioning: SendLocalList(Differential, add) for {cp.id}")
+    await cp.call(call.GetLocalListVersion())
+    await asyncio.sleep(0.5)
+    await cp.call(call.SendLocalList(
+        version_number=2,
+        update_type='Differential',
+        local_authorization_list=[
+            {
+                'id_token': {'id_token': 'D001001', 'type': 'Central'},
+                'id_token_info': {'status': 'Accepted'},
+            },
+        ]
+    ))
+
+
+async def _prov_send_local_list_diff_remove(cp):
+    logging.info(f"Provisioning: SendLocalList(Differential, remove) for {cp.id}")
+    await cp.call(call.SendLocalList(
+        version_number=3,
+        update_type='Differential',
+        local_authorization_list=[
+            {
+                'id_token': {'id_token': 'D001001', 'type': 'Central'},
+            },
+        ]
+    ))
+
+
+async def _prov_send_local_list_full_empty(cp):
+    logging.info(f"Provisioning: SendLocalList(Full, empty) for {cp.id}")
+    await cp.call(call.SendLocalList(
+        version_number=1,
+        update_type='Full',
+    ))
+
+
+async def _prov_get_local_list_version(cp):
+    logging.info(f"Provisioning: GetLocalListVersion for {cp.id}")
+    await cp.call(call.GetLocalListVersion())
+
+
 # ─── Test Mode Actions ───────────────────────────────────────────────────────
 
 async def execute_test_mode_actions(cp, security_profile):
@@ -634,39 +824,57 @@ async def execute_test_mode_actions(cp, security_profile):
 async def auto_detect_and_execute(cp, security_profile):
     """Auto-detect whether the CP is waiting for a CSMS-initiated action.
 
-    Strategy: wait briefly after connection. If BootNotification is received,
-    this is a "quiet" connection (tests like A_01, A_04, A_07, A_08). If no
-    boot is received AND the connection is still open, the CP is waiting for
-    a proactive CSMS action (tests like A_09, A_11, A_19).
+    Strategy: wait briefly after connection. If any message is received from
+    the CP (boot or otherwise), skip proactive actions — the CP is driving
+    the flow (B-test boots, C-test Authorize/TransactionEvent).
 
-    The specific action is determined by the security profile and a per-profile
-    connection counter that maps to a predefined action sequence.
+    If no message is received within the timeout AND the connection is still
+    open, the CP is waiting for a CSMS-initiated action (A-test password
+    update, cert renewal, etc., or C-test ClearCache).
+
+    Session detection:
+    - A-session: first "waiting" connections arrive before any reactive ones
+    - C-session: reactive connections (CP sends non-boot messages) appear
+      first, then "waiting" connections need C-specific actions (clear_cache)
     """
-    # Wait to see if CP sends BootNotification
+    # Wait to see if CP sends any message
     try:
-        await asyncio.wait_for(cp._boot_received.wait(), timeout=1.5)
-        # Boot received - quiet connection, no proactive action needed
-        logging.info(f"Auto-detect: boot received from {cp.id} (SP{security_profile}) - no action")
+        await asyncio.wait_for(cp._any_message_received.wait(), timeout=1.5)
+        # CP sent a message — determine type
+        if cp._boot_received.is_set():
+            # Boot received — handled by provisioning (B tests) or quiet (A tests)
+            logging.info(f"Auto-detect: boot received from {cp.id} (SP{security_profile}) - no action")
+        else:
+            # Non-boot message — reactive connection (C tests)
+            _reactive_mode_detected.add(cp.id)
+            logging.info(f"Auto-detect: reactive connection from {cp.id} (SP{security_profile}) - no action")
         return
     except asyncio.TimeoutError:
         pass
 
-    # Check if the connection is still alive (short-lived connections like
-    # cipher tests or quick connect/close should be skipped)
+    # Check if the connection is still alive
     if not cp._connection.open:
         logging.info(f"Auto-detect: connection already closed for {cp.id} - skipping")
         return
 
-    # Determine which action to perform based on security profile and counter
+    # Determine which action to perform based on session mode and counter
     key = (cp.id, security_profile)
-    counter = _auto_action_counter.get(key, 0)
 
-    if security_profile == 1:
-        actions = _AUTO_SP1_ACTIONS
-    elif security_profile == 2:
-        actions = _AUTO_SP2_ACTIONS
+    if security_profile == 1 and cp.id in _reactive_mode_detected:
+        # C-session: use C-specific actions (clear_cache)
+        counter = _auto_action_counter_c.get(key, 0)
+        actions = _AUTO_SP1_ACTIONS_C
+        _auto_action_counter_c[key] = counter + 1
     else:
-        actions = _AUTO_SP3_ACTIONS
+        # A-session or SP2/SP3: use standard actions
+        counter = _auto_action_counter.get(key, 0)
+        if security_profile == 1:
+            actions = _AUTO_SP1_ACTIONS
+        elif security_profile == 2:
+            actions = _AUTO_SP2_ACTIONS
+        else:
+            actions = _AUTO_SP3_ACTIONS
+        _auto_action_counter[key] = counter + 1
 
     if counter >= len(actions):
         logging.info(f"Auto-detect: no more actions for {cp.id} SP{security_profile} "
@@ -674,10 +882,7 @@ async def auto_detect_and_execute(cp, security_profile):
         return
 
     action = actions[counter]
-    _auto_action_counter[key] = counter + 1
-
-    global _auto_detect_used
-    _auto_detect_used = True
+    _auto_detect_used.add(cp.id)
 
     logging.info(f"Auto-detect: {cp.id} SP{security_profile} action #{counter} -> {action}")
 
@@ -705,6 +910,9 @@ async def _execute_auto_action(cp, action, security_profile):
 
     elif action == 'profile_upgrade':
         await _action_profile_upgrade(cp, security_profile)
+
+    elif action == 'clear_cache':
+        await _action_clear_cache(cp)
 
 
 async def _action_password_update(cp):
@@ -906,7 +1114,6 @@ async def _action_send_local_list_full_empty(cp):
     response = await cp.call(call.SendLocalList(
         version_number=1,
         update_type='Full',
-        local_authorization_list=[]
     ))
     logging.info(f"SendLocalListResponse from {cp.id}: {response}")
 

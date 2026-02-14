@@ -1,0 +1,9 @@
+[
+  {
+    "hash_algorithm": "SHA256",
+    "issuer_name_hash": "cmV2b2tlZC1pc3N1ZXItbmFtZS1oYXNo",
+    "issuer_key_hash": "cmV2b2tlZC1pc3N1ZXIta2V5LWhhc2g=",
+    "serial_number": "DEADBEEF",
+    "responder_url": "http://localhost:19080/ocsp"
+  }
+]

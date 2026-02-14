@@ -1,0 +1,9 @@
+[
+  {
+    "hash_algorithm": "SHA256",
+    "issuer_name_hash": "dGVzdC1pc3N1ZXItbmFtZS1oYXNo",
+    "issuer_key_hash": "dGVzdC1pc3N1ZXIta2V5LWhhc2g=",
+    "serial_number": "1A2B3C4D",
+    "responder_url": "http://localhost:19080/ocsp"
+  }
+]

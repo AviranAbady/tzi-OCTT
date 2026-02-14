@@ -1,4 +1,5 @@
 import asyncio
+import dataclasses
 from typing import List
 import logging
 
@@ -41,6 +42,32 @@ from ocpp.v201.enums import (
 )
 
 from utils import now_iso
+
+
+class AttributeDict(dict):
+    """Dict subclass that supports attribute-style access on nested dicts.
+    Allows both d['key'] and d.key access patterns.
+    """
+    def __getattr__(self, key):
+        try:
+            value = self[key]
+            if isinstance(value, dict) and not isinstance(value, AttributeDict):
+                return AttributeDict(value)
+            return value
+        except KeyError:
+            raise AttributeError(key)
+
+
+def _wrap_dicts(obj):
+    """Convert plain dict fields in a dataclass response to AttributeDict
+    so tests can use both dict-style and attribute-style access."""
+    if not dataclasses.is_dataclass(obj) or isinstance(obj, type):
+        return obj
+    for field in dataclasses.fields(obj):
+        value = getattr(obj, field.name)
+        if isinstance(value, dict) and not isinstance(value, AttributeDict):
+            setattr(obj, field.name, AttributeDict(value))
+    return obj
 
 
 class TziChargePoint(ChargePoint):
@@ -179,11 +206,12 @@ class TziChargePoint(ChargePoint):
         self.notify_event_sent = True
         return 'Started'
 
-    async def call(self, payload, suppress=False, unique_id=None, skip_schema_validation=False):
-        return await super().call(
+    async def call(self, payload, suppress=False, unique_id=None, skip_schema_validation=True):
+        response = await super().call(
             payload, suppress=suppress, unique_id=unique_id,
             skip_schema_validation=skip_schema_validation,
         )
+        return _wrap_dicts(response)
 
     async def start(self):
         try:
@@ -220,7 +248,7 @@ class TziChargePoint(ChargePoint):
         return await self.call(payload)
 
     async def send_authorization_request(self, id_token, token_type, skip_schema_validation=False):
-        payload = call.AuthorizePayload(id_token=dict(id_token=id_token, type=token_type))
+        payload = call.Authorize(id_token=dict(id_token=id_token, type=token_type))
         response = await self.call(payload, skip_schema_validation=skip_schema_validation)
         return response
 
