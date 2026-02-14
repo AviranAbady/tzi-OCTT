@@ -80,6 +80,7 @@ import pytest
 import websockets
 
 from ocpp.v201.enums import RegistrationStatusEnumType, ConnectorStatusEnumType
+from websockets.exceptions import InvalidMessage
 
 from tzi_charge_point import TziChargePoint
 from utils import create_ssl_context
@@ -107,7 +108,7 @@ async def test_tc_a_08():
         client_key=TLS_INVALID_CLIENT_KEY,
     )
 
-    with pytest.raises((ssl.SSLError, websockets.InvalidStatusCode, ConnectionResetError)):
+    with pytest.raises((ssl.SSLError, websockets.InvalidStatusCode, ConnectionResetError, InvalidMessage)):
         await websockets.connect(
             uri=uri,
             subprotocols=['ocpp2.0.1'],
