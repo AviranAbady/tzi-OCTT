@@ -133,12 +133,15 @@ pytest --collect-only -q
 
 ## Local CSMS playground
 
-[csms.py](csms.py) provides a minimal in-memory CSMS to help validate test behavior locally. It is not intended for production use.
-currently supporting the `A B C D E` testcases.
-```
-pytest -v -p no:warnings ./A ./B ./C ./D ./E
+[csms.py](csms.py) provides a minimal in-memory CSMS to help validate test behavior locally.
 
-============== 88 passed in 143.02s (0:02:23) ==============
+It is not intended for production use.
+
+Currently supporting the `A B C D E F G` test cases.
+```
+pytest -v -p no:warnings ./A ./B ./C ./D ./E ./F ./G
+
+============== 113 passed in 233.75s (0:03:53) ==============
 ```
 
 ## Contributing
