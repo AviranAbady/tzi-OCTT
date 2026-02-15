@@ -217,7 +217,14 @@ class TziChargePoint(ChargePoint):
         try:
             await super().start()
         except asyncio.CancelledError:
-            self._connection.close(reason="Normal closure")
+            connection = getattr(self, "_connection", None)
+            if connection is not None:
+                try:
+                    await connection.close(reason="Normal closure")
+                except Exception:
+                    # Ignore close-time errors while handling cancellation.
+                    pass
+            raise
 
     async def send_boot_notification(self):
         payload = call.BootNotification(

@@ -3,7 +3,7 @@ CSMS (Charging Station Management System) implementation for OCPP 2.0.1 test sui
 
 Note: This implementation is intended solely for testing, debugging, and stepping through
       the tzi-octt test suite. It is NOT designed to be used in production.
-      Written entirely by Claude Code, the magnificent.
+      it was written entirely by Anthropic Claude and OpenAI Codex.
 
 Runs two servers:
   - WS  on port 9000 (Security Profile 1: Basic Auth, no TLS)
@@ -75,6 +75,8 @@ import ssl
 import base64
 import http
 import os
+from copy import deepcopy
+from pathlib import Path
 from datetime import datetime, timedelta, timezone
 
 from ocpp.routing import on
@@ -98,48 +100,146 @@ logging.basicConfig(level=logging.INFO)
 
 # ─── Configuration ───────────────────────────────────────────────────────────
 
-BASIC_AUTH_CP_PASSWORD = os.environ.get('BASIC_AUTH_CP_PASSWORD', '0123456789123456')
-NEW_BASIC_AUTH_PASSWORD = os.environ.get('NEW_BASIC_AUTH_PASSWORD', 'new_password_12345678')
-WS_PORT = int(os.environ.get('CSMS_WS_PORT', '9000'))
-WSS_PORT = int(os.environ.get('CSMS_WSS_PORT', '8082'))
-TEST_MODE = sys.argv[1] if len(sys.argv) > 1 else os.environ.get('CSMS_TEST_MODE', '')
+DEFAULT_CONFIG = {
+    'BASIC_AUTH_CP_PASSWORD': '0123456789123456',
+    'NEW_BASIC_AUTH_PASSWORD': 'new_password_12345678',
+    'CSMS_WS_PORT': 9000,
+    'CSMS_WSS_PORT': 8082,
+    'CSMS_TEST_MODE': '',
+    'CSMS_CP_ACTIONS': {},
+    'CSMS_SERVER_CERT': 'certs/server.pem',
+    'CSMS_SERVER_KEY': 'certs/server.key',
+    'CSMS_SERVER_RSA_CERT': 'certs/server_rsa.pem',
+    'CSMS_SERVER_RSA_KEY': 'certs/server_rsa.key',
+    'CSMS_CA_CERT': 'certs/ca.pem',
+    'CSMS_CA_KEY': 'certs/ca.key',
+    'CSMS_WSS_URL': 'wss://localhost:8082',
+    'CSMS_MESSAGE_TIMEOUT': 30,
+    'CSMS_OCPP_INTERFACE': 'Wired0',
+    'CONFIGURED_EVSE_ID': 1,
+    'CONFIGURED_CONNECTOR_ID': 1,
+    'CONFIGURED_CONFIGURATION_SLOT': 1,
+    'CONFIGURED_SECURITY_PROFILE': 2,
+    'CONFIGURED_OCPP_CSMS_URL': 'wss://localhost:8082',
+    'CONFIGURED_OCPP_INTERFACE': 'Wired0',
+    'CONFIGURED_MESSAGE_TIMEOUT': 30,
+    'VALID_ID_TOKEN': '100000C01',
+    'VALID_ID_TOKEN_TYPE': 'Central',
+    'BASIC_AUTH_CP_F': 'CP_F',
+    'BASIC_AUTH_CP': 'CP_1',
+    'CONFIGURED_NUMBER_OF_EVSES': 1,
+    'CONFIGURED_CONNECTOR_TYPE': 'cType2',
+    'CONFIGURED_NUMBER_PHASES': 3,
+    'CONFIGURED_STACK_LEVEL': 1,
+    'CONFIGURED_CHARGING_RATE_UNIT': 'A',
+    'CONFIGURED_CHARGING_SCHEDULE_DURATION': 300,
+    'TRANSACTION_DURATION': 5,
+    'COST_PER_KWH': 0.35,
+    'GROUP_ID': 'GROUP001',
+    'MASTERPASS_GROUP_ID': 'GROUP001',
+    'ISO15118_REVOKED_CERT_HASH_DATA_FILE': 'certs/iso15118_revoked_cert_hash_data.json',
+}
 
-# Per-CP action mapping (JSON). Takes precedence over global TEST_MODE.
-# Example: '{"CP001": "password_update", "SP3_CP": "cert_renewal_cs"}'
-_cp_actions_raw = os.environ.get('CSMS_CP_ACTIONS', '')
-CP_ACTIONS = json.loads(_cp_actions_raw) if _cp_actions_raw else {}
+
+def _load_config():
+    config_path = Path(__file__).resolve().with_name('config.json')
+    config = dict(DEFAULT_CONFIG)
+    if not config_path.exists():
+        logging.warning(f"Config file not found at {config_path}, using defaults")
+        return config
+
+    try:
+        with open(config_path) as f:
+            loaded = json.load(f)
+        if not isinstance(loaded, dict):
+            raise ValueError('config.json root must be an object')
+        config.update(loaded)
+    except Exception as e:
+        logging.warning(f"Failed to load config.json ({e}), using defaults")
+    return config
+
+
+CONFIG = _load_config()
+
+
+def _cfg_str(key):
+    value = CONFIG.get(key, DEFAULT_CONFIG.get(key, ''))
+    return '' if value is None else str(value)
+
+
+def _cfg_int(key):
+    value = CONFIG.get(key, DEFAULT_CONFIG.get(key, 0))
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        logging.warning(f"Invalid int for '{key}' in config.json: {value!r}, using default")
+        return int(DEFAULT_CONFIG.get(key, 0))
+
+
+def _cfg_float(key):
+    value = CONFIG.get(key, DEFAULT_CONFIG.get(key, 0.0))
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        logging.warning(f"Invalid float for '{key}' in config.json: {value!r}, using default")
+        return float(DEFAULT_CONFIG.get(key, 0.0))
+
+
+def _cfg_dict(key):
+    value = CONFIG.get(key, DEFAULT_CONFIG.get(key, {}))
+    if isinstance(value, dict):
+        return value
+    logging.warning(f"Invalid object for '{key}' in config.json: {value!r}, using default")
+    return dict(DEFAULT_CONFIG.get(key, {}))
+
+
+BASIC_AUTH_CP_PASSWORD = _cfg_str('BASIC_AUTH_CP_PASSWORD')
+NEW_BASIC_AUTH_PASSWORD = _cfg_str('NEW_BASIC_AUTH_PASSWORD')
+WS_PORT = _cfg_int('CSMS_WS_PORT')
+WSS_PORT = _cfg_int('CSMS_WSS_PORT')
+TEST_MODE = sys.argv[1] if len(sys.argv) > 1 else _cfg_str('CSMS_TEST_MODE')
+CP_ACTIONS = _cfg_dict('CSMS_CP_ACTIONS')
 
 # TLS paths (server-side)
-SERVER_CERT = os.environ.get('CSMS_SERVER_CERT', 'certs/server.pem')
-SERVER_KEY = os.environ.get('CSMS_SERVER_KEY', 'certs/server.key')
-SERVER_RSA_CERT = os.environ.get('CSMS_SERVER_RSA_CERT', 'certs/server_rsa.pem')
-SERVER_RSA_KEY = os.environ.get('CSMS_SERVER_RSA_KEY', 'certs/server_rsa.key')
-CA_CERT = os.environ.get('CSMS_CA_CERT', 'certs/ca.pem')
-CA_KEY_PATH = os.environ.get('CSMS_CA_KEY', 'certs/ca.key')
+SERVER_CERT = _cfg_str('CSMS_SERVER_CERT')
+SERVER_KEY = _cfg_str('CSMS_SERVER_KEY')
+SERVER_RSA_CERT = _cfg_str('CSMS_SERVER_RSA_CERT')
+SERVER_RSA_KEY = _cfg_str('CSMS_SERVER_RSA_KEY')
+CA_CERT = _cfg_str('CSMS_CA_CERT')
+CA_KEY_PATH = _cfg_str('CSMS_CA_KEY')
 
 # Profile upgrade configuration
-CSMS_WSS_URL = os.environ.get('CSMS_WSS_URL', 'wss://localhost:8082')
-MESSAGE_TIMEOUT = int(os.environ.get('CSMS_MESSAGE_TIMEOUT', '30'))
-OCPP_INTERFACE = os.environ.get('CSMS_OCPP_INTERFACE', 'Wired0')
+CSMS_WSS_URL = _cfg_str('CSMS_WSS_URL')
+MESSAGE_TIMEOUT = _cfg_int('CSMS_MESSAGE_TIMEOUT')
+OCPP_INTERFACE = _cfg_str('CSMS_OCPP_INTERFACE')
 
 # Provisioning configuration (B tests)
-CONFIGURED_EVSE_ID = int(os.environ.get('CONFIGURED_EVSE_ID', '1'))
-CONFIGURED_CONNECTOR_ID = int(os.environ.get('CONFIGURED_CONNECTOR_ID', '1'))
-CONFIGURED_CONFIGURATION_SLOT = int(os.environ.get('CONFIGURED_CONFIGURATION_SLOT', '1'))
-CONFIGURED_SECURITY_PROFILE = int(os.environ.get('CONFIGURED_SECURITY_PROFILE', '2'))
-CONFIGURED_OCPP_CSMS_URL = os.environ.get('CONFIGURED_OCPP_CSMS_URL', 'wss://localhost:8082')
-CONFIGURED_OCPP_INTERFACE = os.environ.get('CONFIGURED_OCPP_INTERFACE', 'Wired0')
-CONFIGURED_MESSAGE_TIMEOUT_B = int(os.environ.get('CONFIGURED_MESSAGE_TIMEOUT', '30'))
+CONFIGURED_EVSE_ID = _cfg_int('CONFIGURED_EVSE_ID')
+CONFIGURED_CONNECTOR_ID = _cfg_int('CONFIGURED_CONNECTOR_ID')
+CONFIGURED_CONFIGURATION_SLOT = _cfg_int('CONFIGURED_CONFIGURATION_SLOT')
+CONFIGURED_SECURITY_PROFILE = _cfg_int('CONFIGURED_SECURITY_PROFILE')
+CONFIGURED_OCPP_CSMS_URL = _cfg_str('CONFIGURED_OCPP_CSMS_URL')
+CONFIGURED_OCPP_INTERFACE = _cfg_str('CONFIGURED_OCPP_INTERFACE')
+CONFIGURED_MESSAGE_TIMEOUT_B = _cfg_int('CONFIGURED_MESSAGE_TIMEOUT')
 
-# F-test configuration
-VALID_ID_TOKEN = os.environ.get('VALID_ID_TOKEN', '100000C01')
-VALID_ID_TOKEN_TYPE = os.environ.get('VALID_ID_TOKEN_TYPE', 'Central')
-BASIC_AUTH_CP_F = os.environ.get('BASIC_AUTH_CP_F', 'CP_F')
+# F/H-test configuration
+VALID_ID_TOKEN = _cfg_str('VALID_ID_TOKEN')
+VALID_ID_TOKEN_TYPE = _cfg_str('VALID_ID_TOKEN_TYPE')
+BASIC_AUTH_CP_F = _cfg_str('BASIC_AUTH_CP_F')
+BASIC_AUTH_CP = _cfg_str('BASIC_AUTH_CP')
+CONFIGURED_NUMBER_OF_EVSES = _cfg_int('CONFIGURED_NUMBER_OF_EVSES')
+CONFIGURED_CONNECTOR_TYPE = _cfg_str('CONFIGURED_CONNECTOR_TYPE')
+CONFIGURED_NUMBER_PHASES = _cfg_int('CONFIGURED_NUMBER_PHASES')
+CONFIGURED_STACK_LEVEL = _cfg_int('CONFIGURED_STACK_LEVEL')
+CONFIGURED_CHARGING_SCHEDULE_DURATION = _cfg_int('CONFIGURED_CHARGING_SCHEDULE_DURATION')
+CONFIGURED_CHARGING_RATE_UNIT = (_cfg_str('CONFIGURED_CHARGING_RATE_UNIT') or 'A').upper()
+TRANSACTION_DURATION = _cfg_int('TRANSACTION_DURATION')
+COST_PER_KWH = _cfg_float('COST_PER_KWH')
 
 # ─── Token Database ──────────────────────────────────────────────────────────
 
-VALID_TOKEN_GROUP = os.environ.get('GROUP_ID', 'GROUP001')
-MASTERPASS_GROUP_ID = os.environ.get('MASTERPASS_GROUP_ID', 'GROUP001')
+VALID_TOKEN_GROUP = _cfg_str('GROUP_ID')
+MASTERPASS_GROUP_ID = _cfg_str('MASTERPASS_GROUP_ID')
 
 TOKEN_DATABASE = {
     '100000C01':       {'status': 'Accepted', 'group': VALID_TOKEN_GROUP},
@@ -163,8 +263,7 @@ def lookup_token(token_value):
 # handler can distinguish valid from revoked certificates without real OCSP.
 
 _REVOKED_SERIALS = set()
-_revoked_file = os.environ.get('ISO15118_REVOKED_CERT_HASH_DATA_FILE',
-                                'certs/iso15118_revoked_cert_hash_data.json')
+_revoked_file = _cfg_str('ISO15118_REVOKED_CERT_HASH_DATA_FILE')
 if _revoked_file and os.path.exists(_revoked_file):
     try:
         with open(_revoked_file) as _f:
@@ -328,6 +427,564 @@ _POST_PROVISIONING_ACTIONS = [
     None,
 ]
 
+# H-test reservation sequence (CP_1).
+_h_reservation_id = 1000
+_h_mode_active = set()          # CP IDs in H reservation mode
+_h_action_index = {}            # cp_id -> next H action index
+_h_pending_action_task = {}     # cp_id -> asyncio.Task for delayed action
+
+_SP1_H_PROVISIONING = [
+    'reserve_specific',          # H_01
+    'reserve_specific_expiry',   # H_07
+    'reserve_unspecified',       # H_08
+    'reserve_unspecified_multi', # H_14
+    'reserve_connector_type',    # H_15
+    'reserve_then_cancel',       # H_17
+    'reserve_specific_group',    # H_19
+    'reserve_specific',          # H_20
+    'reserve_specific',          # H_22
+]
+
+# K-test smart charging sequence (CP_1).
+# Order matches the lexical test order in ./K when running the full K suite.
+_k_mode_active = set()          # CP IDs in K smart-charging mode
+_k_action_index = {}            # cp_id -> next K action index
+_k_pending_action_task = {}     # cp_id -> asyncio.Task for delayed K action
+_k_request_start_id = 0         # RequestStartTransaction remote_start_id counter
+_k_profile_id = 5000            # Charging profile id counter for K-mode profiles
+_k_latest_transaction_id = {}   # cp_id -> latest known transaction_id
+_k_last_offered_schedule = {}   # cp_id -> latest CSMS-offered schedule (for schedule validation)
+_k_last_reported_profile_id = {}  # cp_id -> last charging profile id from ReportChargingProfiles
+_k_exclusive_mode = set()       # cp_id -> K confirmed, suppress H-mode interference
+_k_post_h_reset_done = set()    # cp_id -> K sequence reset once after H suite completion
+_active_cp_instance = {}        # cp_id -> currently active ChargePointHandler instance
+
+_SP1_K_PROVISIONING = [
+    'set_tx_default_specific',        # K_01
+    'set_tx_profile_no_tx',           # K_02
+    'set_station_max_profile',        # K_03
+    'set_replace_same_id',            # K_04
+    'get_then_clear_by_id',           # K_05
+    'clear_by_criteria',              # K_06
+    'clear_by_criteria',              # K_08
+    'set_tx_default_all',             # K_10
+    'set_tx_default_specific',        # K_15
+    'set_tx_default_recurring',       # K_19
+    'get_profiles_evse0_purpose',     # K_29
+    'get_profiles_evse_purpose',      # K_30
+    'get_profiles_no_evse_purpose',   # K_31
+    'get_profiles_by_id',             # K_32
+    'get_profiles_evse_stack',        # K_33
+    'get_profiles_evse_source',       # K_34
+    'get_profiles_evse_purpose',      # K_35
+    'get_profiles_evse_purpose_stack',# K_36
+    'request_start_tx_with_profile',  # K_37
+    'get_composite_evse',             # K_43
+    'get_composite_station',          # K_44
+    None,                             # K_48 (CP -> CSMS notify only)
+    None,                             # K_50 (CP -> CSMS notify only)
+    None,                             # K_51 (CP -> CSMS notify only)
+    None,                             # K_52 (triggered by NotifyChargingLimit)
+    None,                             # K_53 (NotifyEVChargingNeeds-driven)
+    None,                             # K_55 (NotifyEVChargingNeeds-driven)
+    None,                             # K_57 (NotifyEVChargingNeeds-driven)
+    None,                             # K_58 (CSMS-initiated renegotiation after charging event)
+    None,                             # K_59 (CSMS-initiated + NotifyEVChargingNeeds-driven)
+    None,                             # K_60 (ongoing transaction-driven TxProfile)
+    None,                             # K_70 (ongoing transaction-driven multiple profiles)
+]
+
+# L-test firmware management sequence (CP_1).
+# This models a CSMS firmware campaign plan that progresses per maintenance
+# session and reacts to CP firmware status notifications.
+_l_mode_active = set()          # CP IDs in L firmware-management mode
+_l_action_index = {}            # cp_id -> next L action index (raw, no wrap)
+_l_pending_action_task = {}     # cp_id -> asyncio.Task for delayed L action
+
+_SP1_L_PROVISIONING = [
+    {'op': 'update', 'variant': 'secure'},                     # L_01
+    {'op': 'update', 'variant': 'install_scheduled'},          # L_02
+    {'op': 'update', 'variant': 'download_scheduled'},         # L_03
+    {'op': 'update', 'variant': 'secure'},                     # L_04
+    {'op': 'update', 'variant': 'secure'},                     # L_05
+    {'op': 'update', 'variant': 'secure'},                     # L_06
+    {'op': 'update', 'variant': 'secure'},                     # L_07
+    {'op': 'update', 'variant': 'secure'},                     # L_08
+    {'op': 'update', 'variant': 'secure'},                     # L_09
+    {'op': 'update', 'variant': 'replace_on_downloading'},     # L_10
+    {'op': 'update', 'variant': 'replace_on_downloading'},     # L_11
+    {'op': 'update', 'variant': 'secure'},                     # L_13
+    {'op': 'publish', 'variant': 'standard'},                  # L_17
+    {'op': 'publish', 'variant': 'standard'},                  # L_19
+    {'op': 'publish', 'variant': 'standard'},                  # L_20
+    {'op': 'unpublish', 'variant': 'standard'},                # L_21
+    {'op': 'unpublish', 'variant': 'standard'},                # L_22
+    {'op': 'unpublish', 'variant': 'standard'},                # L_23
+    {'op': 'publish', 'variant': 'standard'},                  # L_24
+]
+
+_L_UPDATE_LOCATION = 'https://downloads.example.org/firmware/ocpp-v201.bin'
+_L_UPDATE_LOCATION_ALT = 'https://downloads.example.org/firmware/ocpp-v201-hotfix.bin'
+_L_PUBLISH_LOCATION = 'https://cdn.example.org/firmware/publish.bin'
+_L_PUBLISH_CHECKSUM = 'A1B2C3D4'
+_L_UNPUBLISH_CHECKSUM = 'A1B2C3D4'
+_L_SIGNING_CERT = (
+    "-----BEGIN CERTIFICATE-----\n"
+    "MIIBlTCCATugAwIBAgIUBtziLTestSigningCert1234567890wCgYIKoZIzj0EAwIw\n"
+    "GDEWMBQGA1UEAwwNT0NQUC1GaXJtd2FyZS1DQTAeFw0yNTAxMDEwMDAwMDBaFw0z\n"
+    "NTAxMDEwMDAwMDBaMBgxFjAUBgNVBAMMDU9DUFAtRmlybXdhcmUtQ0EwWTATBgcq\n"
+    "hkjOPQIBBggqhkjOPQMBBwNCAAQxL2vJ3I9+u8V6n8a+Pj8f1R+MdC5y2t3N2q1J\n"
+    "kL5rX9YyKqS8gLJ5v6s8n1Z4u8X9A3mQz4fL0p1gR0sN8a8Lo1MwUTAdBgNVHQ4E\n"
+    "FgQURRANDOMPLACEHOLDERFIRMWARECERT123wHwYDVR0jBBgwFoAURRANDOMPLACE\n"
+    "HOLDERFIRMWARECERT123MA8GA1UdEwEB/wQFMAMBAf8wCgYIKoZIzj0EAwIDSQAw\n"
+    "RgIhAJs6U2FMtR6eD4lJQz8J2kTq8n0A5Q9Jw3eV2D1sL0h7AiEAxqW+QWm3Q+vB\n"
+    "6w8A7nZ5o2o4C7N3d9mQ2nQxQ9rY5n8=\n"
+    "-----END CERTIFICATE-----"
+)
+_L_SIGNATURE = 'MEUCIQCfirmwareSignaturePlaceholder1234567890=='
+
+# I/J transaction cost tracking: cp_id -> tx_id -> {'start': float, 'last': float}
+_txn_cost_state = {}
+
+
+def _enum_text(value):
+    return getattr(value, 'value', str(value))
+
+
+def _transaction_id_from_info(transaction_info):
+    if isinstance(transaction_info, dict):
+        return transaction_info.get('transaction_id') or transaction_info.get('transactionId')
+    return getattr(transaction_info, 'transaction_id', None) or getattr(transaction_info, 'transactionId', None)
+
+
+def _charging_state_from_info(transaction_info):
+    if isinstance(transaction_info, dict):
+        return transaction_info.get('charging_state') or transaction_info.get('chargingState', '')
+    return getattr(transaction_info, 'charging_state', '') or getattr(transaction_info, 'chargingState', '')
+
+
+def _extract_last_meter_value(meter_value):
+    """Extract the last numeric sampled value from meter_value payload."""
+    if not meter_value:
+        return None
+    last_numeric = None
+    for mv in meter_value:
+        if isinstance(mv, dict):
+            sampled_values = mv.get('sampled_value') or mv.get('sampledValue') or []
+        else:
+            sampled_values = getattr(mv, 'sampled_value', []) or []
+        for sample in sampled_values:
+            if isinstance(sample, dict):
+                raw_value = sample.get('value')
+            else:
+                raw_value = getattr(sample, 'value', None)
+            if raw_value is None:
+                continue
+            try:
+                last_numeric = float(raw_value)
+            except (TypeError, ValueError):
+                continue
+    return last_numeric
+
+
+def _update_transaction_cost_state(cp_id, transaction_id, meter_value):
+    meter_reading = _extract_last_meter_value(meter_value)
+    if transaction_id is None or meter_reading is None:
+        return
+    cp_map = _txn_cost_state.setdefault(cp_id, {})
+    tx_state = cp_map.setdefault(transaction_id, {'start': meter_reading, 'last': meter_reading})
+    tx_state['last'] = meter_reading
+
+
+def _estimate_transaction_total_cost(cp_id, transaction_id):
+    tx_state = _txn_cost_state.get(cp_id, {}).get(transaction_id)
+    if not tx_state:
+        return 0.0
+    delta_wh = max(0.0, float(tx_state['last']) - float(tx_state['start']))
+    return round((delta_wh / 1000.0) * COST_PER_KWH, 2)
+
+
+async def _send_cost_updated(cp, transaction_id):
+    total_cost = _estimate_transaction_total_cost(cp.id, transaction_id)
+    try:
+        logging.info(f"Sending CostUpdated to {cp.id}: txn={transaction_id}, total_cost={total_cost}")
+        await cp.call(call.CostUpdated(total_cost=total_cost, transaction_id=transaction_id))
+    except Exception as e:
+        logging.warning(f"CostUpdated call failed for {cp.id}: {e}")
+
+
+# ─── K-Mode Smart Charging Helpers ───────────────────────────────────────────
+
+def _k_next_request_start_id():
+    global _k_request_start_id
+    _k_request_start_id += 1
+    return _k_request_start_id
+
+
+def _k_next_profile_id():
+    global _k_profile_id
+    _k_profile_id += 1
+    return _k_profile_id
+
+
+def _k_allocate_session_index(cp_id):
+    raw_idx = _k_action_index.get(cp_id, 0)
+    if _SP1_K_PROVISIONING:
+        idx = raw_idx % len(_SP1_K_PROVISIONING)
+    else:
+        idx = 0
+    _k_action_index[cp_id] = raw_idx + 1
+    if raw_idx != idx:
+        logging.info(
+            f"K-mode session index wrapped for {cp_id}: raw_index={raw_idx}, wrapped_index={idx}"
+        )
+    return idx
+
+
+def _h_allocate_session_index(cp_id):
+    raw_idx = _h_action_index.get(cp_id, 0)
+    if _SP1_H_PROVISIONING:
+        idx = raw_idx % len(_SP1_H_PROVISIONING)
+    else:
+        idx = 0
+    _h_action_index[cp_id] = raw_idx + 1
+    if raw_idx != idx:
+        logging.info(
+            f"H-mode session index wrapped for {cp_id}: raw_index={raw_idx}, wrapped_index={idx}"
+        )
+    return idx
+
+
+def _l_allocate_session_index(cp_id):
+    raw_idx = _l_action_index.get(cp_id, 0)
+    if raw_idx >= len(_SP1_L_PROVISIONING):
+        logging.info(
+            f"L-mode sequence exhausted for {cp_id}: raw_index={raw_idx}, "
+            f"total={len(_SP1_L_PROVISIONING)}"
+        )
+        return -1
+    _l_action_index[cp_id] = raw_idx + 1
+    return raw_idx
+
+
+def _l_session_index(cp):
+    return getattr(cp, '_l_session_index', _l_action_index.get(cp.id, -1))
+
+
+def _l_future_iso(seconds):
+    return (
+        datetime.now(timezone.utc) + timedelta(seconds=max(1, int(seconds)))
+    ).replace(microsecond=0).isoformat().replace('+00:00', 'Z')
+
+
+def _l_build_update_firmware_payload(*, variant='secure', alternate=False):
+    # retrieveDateTime is mandatory in FirmwareType.
+    retrieve_date_time = _l_future_iso(120 if variant == 'download_scheduled' else 10)
+    payload = {
+        'location': _L_UPDATE_LOCATION_ALT if alternate else _L_UPDATE_LOCATION,
+        'retrieve_date_time': retrieve_date_time,
+        'signing_certificate': _L_SIGNING_CERT,
+        'signature': _L_SIGNATURE,
+    }
+    if variant == 'install_scheduled':
+        payload['install_date_time'] = _l_future_iso(120)
+    return payload
+
+
+async def _l_send_update_firmware(cp, *, variant='secure', alternate=False):
+    if _active_cp_instance.get(cp.id) is not cp:
+        return None
+    request_id = _next_request_id()
+    firmware = _l_build_update_firmware_payload(variant=variant, alternate=alternate)
+    try:
+        logging.info(
+            f"L-mode: sending UpdateFirmware to {cp.id} "
+            f"(request_id={request_id}, variant={variant}, alternate={alternate})"
+        )
+        await cp.call(call.UpdateFirmware(
+            request_id=request_id,
+            firmware=firmware,
+            retries=1,
+            retry_interval=5,
+        ))
+        return request_id
+    except Exception as e:
+        logging.warning(f"L-mode UpdateFirmware failed for {cp.id}: {e}")
+        return None
+
+
+async def _l_send_publish_firmware(cp):
+    if _active_cp_instance.get(cp.id) is not cp:
+        return None
+    request_id = _next_request_id()
+    try:
+        logging.info(
+            f"L-mode: sending PublishFirmware to {cp.id} "
+            f"(request_id={request_id}, location={_L_PUBLISH_LOCATION})"
+        )
+        await cp.call(call.PublishFirmware(
+            location=_L_PUBLISH_LOCATION,
+            checksum=_L_PUBLISH_CHECKSUM,
+            request_id=request_id,
+            retries=1,
+            retry_interval=5,
+        ))
+        return request_id
+    except Exception as e:
+        logging.warning(f"L-mode PublishFirmware failed for {cp.id}: {e}")
+        return None
+
+
+async def _l_send_unpublish_firmware(cp):
+    if _active_cp_instance.get(cp.id) is not cp:
+        return
+    try:
+        logging.info(
+            f"L-mode: sending UnpublishFirmware to {cp.id} "
+            f"(checksum={_L_UNPUBLISH_CHECKSUM})"
+        )
+        await cp.call(call.UnpublishFirmware(checksum=_L_UNPUBLISH_CHECKSUM))
+    except Exception as e:
+        logging.warning(f"L-mode UnpublishFirmware failed for {cp.id}: {e}")
+
+
+def _k_period(limit):
+    period = {
+        'start_period': 0,
+        'limit': float(limit),
+    }
+    if CONFIGURED_NUMBER_PHASES != 3:
+        period['number_phases'] = CONFIGURED_NUMBER_PHASES
+    return period
+
+
+def _k_schedule(limit, *, include_start_schedule=True, duration=None, rate_unit=None):
+    schedule = {
+        'id': 1,
+        'charging_rate_unit': rate_unit or CONFIGURED_CHARGING_RATE_UNIT,
+        'duration': duration if duration is not None else CONFIGURED_CHARGING_SCHEDULE_DURATION,
+        'charging_schedule_period': [_k_period(limit)],
+    }
+    if include_start_schedule:
+        schedule['start_schedule'] = now_iso()
+    return schedule
+
+
+def _k_profile(profile_id, purpose, kind, limit, *, include_start_schedule=True,
+               include_valid_window=False, recurrency_kind=None, transaction_id=None):
+    profile = {
+        'id': profile_id,
+        'stack_level': CONFIGURED_STACK_LEVEL,
+        'charging_profile_purpose': purpose,
+        'charging_profile_kind': kind,
+        'charging_schedule': [
+            _k_schedule(limit, include_start_schedule=include_start_schedule),
+        ],
+    }
+    if include_valid_window:
+        profile['valid_from'] = now_iso()
+        profile['valid_to'] = (
+            datetime.now(timezone.utc) + timedelta(seconds=CONFIGURED_CHARGING_SCHEDULE_DURATION)
+        ).replace(microsecond=0).isoformat().replace('+00:00', 'Z')
+    if recurrency_kind is not None:
+        profile['recurrency_kind'] = recurrency_kind
+    if transaction_id is not None:
+        profile['transaction_id'] = str(transaction_id)
+    return profile
+
+
+def _k_extract_schedule(profile):
+    if not isinstance(profile, dict):
+        return None
+    schedules = profile.get('charging_schedule') or profile.get('chargingSchedule')
+    if isinstance(schedules, list) and schedules:
+        return schedules[0]
+    if isinstance(schedules, dict):
+        return schedules
+    return None
+
+
+def _k_extract_profile_id(charging_profile):
+    if isinstance(charging_profile, list) and charging_profile:
+        first = charging_profile[0]
+    else:
+        first = charging_profile
+    if isinstance(first, dict):
+        return first.get('id')
+    return getattr(first, 'id', None)
+
+
+def _k_extract_period_limits(schedule):
+    if not schedule:
+        return []
+    if isinstance(schedule, dict):
+        periods = schedule.get('charging_schedule_period') or schedule.get('chargingSchedulePeriod') or []
+    else:
+        periods = getattr(schedule, 'charging_schedule_period', None) or []
+    limits = []
+    for period in periods:
+        if isinstance(period, dict):
+            raw = period.get('limit')
+        else:
+            raw = getattr(period, 'limit', None)
+        try:
+            limits.append(float(raw))
+        except (TypeError, ValueError):
+            continue
+    return limits
+
+
+def _k_schedule_exceeds_offer(cp_id, proposed_schedule):
+    offered = _k_last_offered_schedule.get(cp_id)
+    if offered is None:
+        return False
+    offered_limits = _k_extract_period_limits(offered)
+    proposed_limits = _k_extract_period_limits(proposed_schedule)
+    if not offered_limits or not proposed_limits:
+        return False
+    for idx, proposed_limit in enumerate(proposed_limits):
+        offered_limit = offered_limits[min(idx, len(offered_limits) - 1)]
+        if proposed_limit > offered_limit + 1e-9:
+            return True
+    return False
+
+
+def _k_session_index(cp):
+    return getattr(cp, '_k_session_index', _k_action_index.get(cp.id, -1))
+
+
+async def _k_send_set_charging_profile(cp, evse_id, profile):
+    if _active_cp_instance.get(cp.id) is not cp:
+        return
+    try:
+        logging.info(
+            f"K-mode: sending SetChargingProfile to {cp.id} "
+            f"(evse_id={evse_id}, purpose={profile.get('charging_profile_purpose')}, "
+            f"profile_id={profile.get('id')})"
+        )
+        response = await cp.call(call.SetChargingProfile(evse_id=evse_id, charging_profile=profile))
+        # CALLERROR may be surfaced as a response object instead of an exception
+        # depending on the ocpp stack internals. Treat such responses as failure.
+        if response is None or hasattr(response, 'error_code'):
+            raise RuntimeError(f"SetChargingProfile unsuccessful response: {response!r}")
+        # Once K traffic is accepted for a CP, suppress H-mode for that CP to
+        # avoid cross-suite action races (H ReserveNow can cancel pending K timers).
+        if cp.id not in _k_exclusive_mode:
+            _k_exclusive_mode.add(cp.id)
+            _h_mode_active.discard(cp.id)
+            logging.info(f"K-mode confirmed for {cp.id}; H-mode suppressed for this CP")
+        if profile.get('charging_profile_purpose') == 'TxProfile':
+            offered = _k_extract_schedule(profile)
+            if offered is not None:
+                _k_last_offered_schedule[cp.id] = deepcopy(offered)
+    except Exception as e:
+        if _active_cp_instance.get(cp.id) is not cp:
+            return
+        logging.warning(f"K-mode SetChargingProfile failed for {cp.id}: {e}")
+        # Support standalone K34 run: if very first K action can't be handled
+        # and we don't observe reservation-flow messages, jump to K34 query.
+        if _k_session_index(cp) == 0:
+            if cp._k_standalone_fallback_task:
+                cp._k_standalone_fallback_task.cancel()
+            cp._k_standalone_fallback_task = asyncio.create_task(
+                _k_standalone_fallback_to_k34(cp)
+            )
+            return
+        error_text = str(e)
+        if 'NotImplemented' in error_text or 'No handler for SetChargingProfile' in error_text:
+            _k_mode_active.discard(cp.id)
+            logging.info(f"K-mode disabled for {cp.id} (SetChargingProfile not supported)")
+
+
+async def _k_send_tx_profile_for_transaction(cp, transaction_id, *, limit=16.0):
+    if not transaction_id:
+        logging.warning(f"K-mode: cannot send TxProfile for {cp.id} without transaction_id")
+        return
+    profile = _k_profile(
+        _k_next_profile_id(),
+        'TxProfile',
+        'Absolute',
+        limit,
+        include_start_schedule=True,
+        transaction_id=str(transaction_id),
+    )
+    await _k_send_set_charging_profile(cp, CONFIGURED_EVSE_ID, profile)
+
+
+async def _k_send_get_charging_profiles(cp, criterion, *, evse_id=None):
+    request_id = _next_request_id()
+    try:
+        logging.info(
+            f"K-mode: sending GetChargingProfiles to {cp.id} "
+            f"(request_id={request_id}, evse_id={evse_id}, criterion={criterion})"
+        )
+        kwargs = {
+            'request_id': request_id,
+            'charging_profile': criterion,
+        }
+        if evse_id is not None:
+            kwargs['evse_id'] = evse_id
+        await cp.call(call.GetChargingProfiles(**kwargs))
+        return True
+    except Exception as e:
+        logging.warning(f"K-mode GetChargingProfiles failed for {cp.id}: {e}")
+        return False
+
+
+async def _k_send_clear_charging_profile(cp, *, charging_profile_id=None, criteria=None):
+    try:
+        logging.info(
+            f"K-mode: sending ClearChargingProfile to {cp.id} "
+            f"(charging_profile_id={charging_profile_id}, criteria={criteria})"
+        )
+        kwargs = {}
+        if charging_profile_id is not None:
+            kwargs['charging_profile_id'] = charging_profile_id
+        if criteria is not None:
+            kwargs['charging_profile_criteria'] = criteria
+        await cp.call(call.ClearChargingProfile(**kwargs))
+    except Exception as e:
+        logging.warning(f"K-mode ClearChargingProfile failed for {cp.id}: {e}")
+
+
+async def _k_send_get_composite_schedule(cp, *, evse_id):
+    try:
+        logging.info(
+            f"K-mode: sending GetCompositeSchedule to {cp.id} "
+            f"(evse_id={evse_id}, duration={CONFIGURED_CHARGING_SCHEDULE_DURATION})"
+        )
+        await cp.call(call.GetCompositeSchedule(
+            duration=CONFIGURED_CHARGING_SCHEDULE_DURATION,
+            evse_id=evse_id,
+            charging_rate_unit=CONFIGURED_CHARGING_RATE_UNIT,
+        ))
+    except Exception as e:
+        logging.warning(f"K-mode GetCompositeSchedule failed for {cp.id}: {e}")
+
+
+async def _k_standalone_fallback_to_k34(cp, delay=3):
+    """Fallback for standalone K34 runs where SetChargingProfile isn't implemented.
+
+    If no reservation-flow evidence appears shortly after K action #0 failure,
+    switch to K34 action and send GetChargingProfiles(chargingLimitSource).
+    """
+    try:
+        await asyncio.sleep(delay)
+        if not cp._connection.open:
+            return
+        if cp._h_confirmed:
+            return
+        if _k_session_index(cp) != 0:
+            return
+        logging.info(f"K-mode standalone fallback for {cp.id}: switching to K34 action")
+        cp._k_session_index = 15
+        cp._k_action_fired_for_session = True
+        await _execute_k_action(cp, 'get_profiles_evse_source')
+    except asyncio.CancelledError:
+        pass
+    except Exception as e:
+        logging.warning(f"K-mode standalone fallback failed for {cp.id}: {e}")
+
 
 # ─── Per-CP Test Mode ───────────────────────────────────────────────────────
 
@@ -386,6 +1043,26 @@ class ChargePointHandler(ChargePoint):
         self._boot_status = None
         self._f_action_fired_for_session = False
         self._post_prov_action_fired_for_session = False
+        self._h_action_fired_for_session = False
+        self._h_session_index = -1
+        self._k_action_fired_for_session = False
+        self._k_session_index = -1
+        self._k_pending_clear_from_report = False
+        self._k_schedule_rejected_once = False
+        self._k_renegotiation_pending = False
+        self._k_initiated_set_sent = False
+        self._k_tx_profile_sent = False
+        self._k_multi_profile_sent = False
+        self._l_action_fired_for_session = False
+        self._l_session_index = -1
+        self._l_flow_state = None
+        self._h_confirmed = False
+        self._k_standalone_fallback_task = None
+        self._k_index_rolled_back = False
+        # I/J detection: if these appear early in session, do not force H-mode.
+        self._seen_authorize = False
+        self._seen_transaction_event = False
+        self._seen_meter_values = False
 
     async def route_message(self, raw_msg):
         """Override to track when any message is received from this CP."""
@@ -399,6 +1076,15 @@ class ChargePointHandler(ChargePoint):
         # Cancel any pending post-provisioning action (new message = CP is still sending)
         if self.id in _post_prov_pending_task:
             _post_prov_pending_task.pop(self.id).cancel()
+        # Cancel any pending H-mode action (new message = CP is still sending)
+        if self.id in _h_pending_action_task:
+            _h_pending_action_task.pop(self.id).cancel()
+        # Cancel any pending K-mode action (new message = CP is still sending)
+        if self.id in _k_pending_action_task:
+            _k_pending_action_task.pop(self.id).cancel()
+        # Cancel any pending L-mode action (new message = CP is still sending)
+        if self.id in _l_pending_action_task:
+            _l_pending_action_task.pop(self.id).cancel()
         result = await super().route_message(raw_msg)
         # Reschedule F-mode action after message processing (silence detection)
         if self.id in _f_mode_active and not self._f_action_fired_for_session:
@@ -416,6 +1102,29 @@ class ChargePointHandler(ChargePoint):
                     _post_prov_pending_task[self.id] = asyncio.create_task(
                         _delayed_post_prov_action(self)
                     )
+        # Reschedule H-mode action (silence detection)
+        if self.id in _h_mode_active and self.id not in _k_exclusive_mode and not self._h_action_fired_for_session:
+            idx = self._h_session_index
+            if 0 <= idx < len(_SP1_H_PROVISIONING):
+                _h_pending_action_task[self.id] = asyncio.create_task(
+                    _delayed_h_action(self, idx)
+                )
+        # Reschedule K-mode action (silence detection).
+        # Once a CP is classified as K-mode, keep K actions active even if the
+        # session includes Authorize/TransactionEvent traffic (e.g. K_29+).
+        if self.id in _k_mode_active and not self._k_action_fired_for_session:
+            idx = self._k_session_index
+            if 0 <= idx < len(_SP1_K_PROVISIONING):
+                _k_pending_action_task[self.id] = asyncio.create_task(
+                    _delayed_k_action(self, idx)
+                )
+        # Reschedule L-mode action (silence detection).
+        if self.id in _l_mode_active and not self._l_action_fired_for_session:
+            idx = self._l_session_index
+            if 0 <= idx < len(_SP1_L_PROVISIONING):
+                _l_pending_action_task[self.id] = asyncio.create_task(
+                    _delayed_l_action(self, idx)
+                )
         return result
 
     @on(Action.boot_notification)
@@ -441,6 +1150,76 @@ class ChargePointHandler(ChargePoint):
             if self.id in _f_mode_active:
                 self._boot_status = 'Accepted'
                 logging.info(f"F-mode boot for {self.id}: Accepted")
+                return call_result.BootNotification(
+                    current_time=now_iso(),
+                    interval=10,
+                    status=RegistrationStatusEnumType.accepted,
+                )
+
+            # H-mode: always Accepted, action triggered by silence detection
+            if self.id in _h_mode_active and _h_action_index.get(self.id, 0) >= len(_SP1_H_PROVISIONING):
+                _h_mode_active.discard(self.id)
+            if self.id in _h_mode_active and self.id not in _k_exclusive_mode:
+                self._h_session_index = _h_allocate_session_index(self.id)
+                self._boot_status = 'Accepted'
+                logging.info(f"H-mode boot for {self.id}: Accepted")
+                return call_result.BootNotification(
+                    current_time=now_iso(),
+                    interval=10,
+                    status=RegistrationStatusEnumType.accepted,
+                )
+
+            # Transition from K to L when K campaign has been consumed.
+            if (
+                self.id in _k_mode_active
+                and _k_action_index.get(self.id, 0) >= len(_SP1_K_PROVISIONING)
+            ):
+                _k_mode_active.discard(self.id)
+                if _l_action_index.get(self.id, 0) < len(_SP1_L_PROVISIONING):
+                    _l_mode_active.add(self.id)
+                    logging.info(f"L-mode transition for {self.id}: K campaign exhausted")
+
+            # L-mode: always Accepted, action triggered by silence detection.
+            if self.id in _l_mode_active:
+                self._boot_status = 'Accepted'
+                reason_text = _enum_text(reason)
+                if reason_text == 'FirmwareUpdate':
+                    # In-session reboot during firmware installation.
+                    logging.info(f"L-mode boot for {self.id}: Accepted (firmware reboot)")
+                else:
+                    self._l_session_index = _l_allocate_session_index(self.id)
+                    logging.info(
+                        f"L-mode boot for {self.id}: Accepted "
+                        f"(session_index={self._l_session_index})"
+                    )
+                return call_result.BootNotification(
+                    current_time=now_iso(),
+                    interval=10,
+                    status=RegistrationStatusEnumType.accepted,
+                )
+
+            # CP_1 after H completion: stay Accepted and let session detection
+            # choose between I/J reactive behavior, K-mode, and L-mode.
+            if (
+                self.id == BASIC_AUTH_CP
+                and _h_action_index.get(self.id, 0) >= len(_SP1_H_PROVISIONING)
+                and self.id not in _k_mode_active
+                and self.id not in _l_mode_active
+            ):
+                self._boot_status = 'Accepted'
+                asyncio.create_task(self._detect_session_type())
+                logging.info(f"Post-H boot for {self.id}: Accepted (mode detection pending)")
+                return call_result.BootNotification(
+                    current_time=now_iso(),
+                    interval=10,
+                    status=RegistrationStatusEnumType.accepted,
+                )
+
+            # K-mode: always Accepted, action triggered by silence detection
+            if self.id in _k_mode_active:
+                self._k_session_index = _k_allocate_session_index(self.id)
+                self._boot_status = 'Accepted'
+                logging.info(f"K-mode boot for {self.id}: Accepted (session_index={self._k_session_index})")
                 return call_result.BootNotification(
                     current_time=now_iso(),
                     interval=10,
@@ -499,10 +1278,21 @@ class ChargePointHandler(ChargePoint):
         if self.id in _f_mode_active:
             logging.info(f"Session detection: already F-mode for {self.id}")
             return
+        if self.id in _h_mode_active:
+            logging.info(f"Session detection: already H-mode for {self.id}")
+            return
+        if self.id in _k_mode_active:
+            logging.info(f"Session detection: already K-mode for {self.id}")
+            return
+        if self.id in _l_mode_active:
+            logging.info(f"Session detection: already L-mode for {self.id}")
+            return
 
         # Check if a second boot has been received (B-test pattern)
         boot_count = _sp1_boot_counter.get(self.id, 0)
-        if boot_count > 1:
+        if boot_count > 1 and not (
+            self.id == BASIC_AUTH_CP and _h_action_index.get(self.id, 0) >= len(_SP1_H_PROVISIONING)
+        ):
             logging.info(f"Session detection: second boot already arrived for {self.id} - B session")
             return
 
@@ -510,6 +1300,19 @@ class ChargePointHandler(ChargePoint):
         if not self._connection.open:
             logging.info(f"Session detection: connection closed for {self.id} - B session")
             return
+
+        # When H sequence is already exhausted for CP_1, restart K sequencing once
+        # so subsequent standalone K sessions start deterministically from K_01.
+        if self.id == BASIC_AUTH_CP:
+            h_progress = _h_action_index.get(self.id, 0)
+            if h_progress >= len(_SP1_H_PROVISIONING) and self.id not in _k_post_h_reset_done:
+                prev_k = _k_action_index.get(self.id, 0)
+                _k_action_index[self.id] = 0
+                _k_post_h_reset_done.add(self.id)
+                logging.info(
+                    f"K-mode sequence reset for {self.id} after H completion "
+                    f"(previous_raw_index={prev_k})"
+                )
 
         # No second boot and still connected: determine session type
         if BASIC_AUTH_CP_F and self.id == BASIC_AUTH_CP_F:
@@ -523,6 +1326,54 @@ class ChargePointHandler(ChargePoint):
                     _delayed_f_action(self, idx)
                 )
             return
+
+        # I/J style session on CP_1: reactive only, no proactive actions.
+        if self.id == BASIC_AUTH_CP and (
+            self._seen_authorize or self._seen_transaction_event or self._seen_meter_values
+        ):
+            logging.info(f"I/J reactive session detected for {self.id} - no proactive action")
+            return
+
+        # H-mode: reservation test session
+        if BASIC_AUTH_CP and self.id == BASIC_AUTH_CP:
+            h_progress = _h_action_index.get(self.id, 0)
+            if h_progress < len(_SP1_H_PROVISIONING):
+                _h_mode_active.add(self.id)
+                self._h_session_index = _h_allocate_session_index(self.id)
+                idx = self._h_session_index
+                logging.info(f"H-mode detected for {self.id} - scheduling H action #{idx}")
+                if 0 <= idx < len(_SP1_H_PROVISIONING):
+                    _h_pending_action_task[self.id] = asyncio.create_task(
+                        _delayed_h_action(self, idx)
+                    )
+                return
+
+            _h_mode_active.discard(self.id)
+            k_progress = _k_action_index.get(self.id, 0)
+            if k_progress < len(_SP1_K_PROVISIONING):
+                # H exhausted: switch to K-mode for subsequent CP_1 sessions.
+                _k_mode_active.add(self.id)
+                self._k_session_index = _k_allocate_session_index(self.id)
+                k_idx = self._k_session_index
+                logging.info(f"K-mode detected for {self.id} - scheduling K action #{k_idx}")
+                if 0 <= k_idx < len(_SP1_K_PROVISIONING):
+                    _k_pending_action_task[self.id] = asyncio.create_task(
+                        _delayed_k_action(self, k_idx)
+                    )
+                return
+
+            l_progress = _l_action_index.get(self.id, 0)
+            if l_progress < len(_SP1_L_PROVISIONING):
+                _k_mode_active.discard(self.id)
+                _l_mode_active.add(self.id)
+                self._l_session_index = _l_allocate_session_index(self.id)
+                l_idx = self._l_session_index
+                logging.info(f"L-mode detected for {self.id} - scheduling L action #{l_idx}")
+                if 0 <= l_idx < len(_SP1_L_PROVISIONING):
+                    _l_pending_action_task[self.id] = asyncio.create_task(
+                        _delayed_l_action(self, l_idx)
+                    )
+                return
 
         # Default: post-provisioning mode (unified D + G action queue)
         _post_prov_mode_active.add(self.id)
@@ -546,6 +1397,9 @@ class ChargePointHandler(ChargePoint):
         if self._boot_status in ('Pending', 'Rejected'):
             logging.info(f"StatusNotification from {self.id} rejected (boot={self._boot_status})")
             raise OCPPSecurityError('Not authorized during Pending/Rejected state')
+        connector_status = _enum_text(kwargs.get('connector_status') or kwargs.get('connectorStatus') or '')
+        if connector_status and connector_status != 'Available':
+            self._h_confirmed = True
         # E-mode detection: count StatusNotifications from non-boot CPs
         if not self._boot_received.is_set():
             _e_cp_status_count[self.id] = _e_cp_status_count.get(self.id, 0) + 1
@@ -589,6 +1443,7 @@ class ChargePointHandler(ChargePoint):
     @on(Action.authorize)
     async def on_authorize(self, id_token, certificate=None,
                            iso15118_certificate_hash_data=None, **kwargs):
+        self._seen_authorize = True
         token_value = id_token.get('id_token', '') if isinstance(id_token, dict) else str(id_token)
         token_info = lookup_token(token_value)
         logging.info(f"Authorize from {self.id}: token={token_value} -> {token_info['status']}")
@@ -625,12 +1480,22 @@ class ChargePointHandler(ChargePoint):
     async def on_transaction_event(self, event_type, timestamp, trigger_reason,
                                    seq_no, transaction_info, id_token=None,
                                    evse=None, **kwargs):
+        self._seen_transaction_event = True
+        event_type_text = _enum_text(event_type)
+        trigger_reason_text = _enum_text(trigger_reason)
+        txn_id = _transaction_id_from_info(transaction_info)
+        if txn_id is not None:
+            txn_id = str(txn_id)
+            _k_latest_transaction_id[self.id] = txn_id
+        charging_state = _charging_state_from_info(transaction_info)
+        meter_value = kwargs.get('meter_value')
+        _update_transaction_cost_state(self.id, txn_id, meter_value)
+
         # E-mode transaction tracking
-        if self.id in _e_mode_active and isinstance(transaction_info, dict):
-            txn_id = transaction_info.get('transaction_id')
+        if self.id in _e_mode_active and transaction_info is not None:
             if txn_id:
                 _e_cp_transactions[self.id] = txn_id
-            charging_state = transaction_info.get('charging_state', '')
+            charging_state = _charging_state_from_info(transaction_info)
             offline = kwargs.get('offline', False)
 
             idx = _e_action_index.get(self.id, 0)
@@ -639,7 +1504,7 @@ class ChargePointHandler(ChargePoint):
                 if trigger == 'after_charging' and str(charging_state) == 'Charging':
                     _e_pending_action_task[self.id] = asyncio.create_task(
                         _delayed_e_action(self, action, idx))
-                elif trigger == 'after_ended' and str(event_type) == 'Ended' and offline:
+                elif trigger == 'after_ended' and event_type_text == 'Ended' and offline:
                     _e_pending_action_task[self.id] = asyncio.create_task(
                         _delayed_e_action(self, action, idx))
 
@@ -660,6 +1525,27 @@ class ChargePointHandler(ChargePoint):
             )
         else:
             logging.info(f"TransactionEvent from {self.id}: type={event_type} trigger={trigger_reason}")
+
+        # I_01: if no totalCost in TransactionEventResponse, send CostUpdated for periodic meter updates.
+        if event_type_text == 'Updated' and trigger_reason_text == 'MeterValuePeriodic' and txn_id:
+            asyncio.create_task(_send_cost_updated(self, txn_id))
+
+        # I_02: totalCost must be present on Ended transaction response.
+        if event_type_text == 'Ended':
+            response_kwargs['total_cost'] = _estimate_transaction_total_cost(self.id, txn_id)
+
+        # K-mode transaction-driven actions (K_58, K_59, K_60, K_70, K_55 renegotiation).
+        if self.id in _k_mode_active:
+            asyncio.create_task(
+                _k_handle_transaction_event(
+                    self,
+                    event_type_text=event_type_text,
+                    trigger_reason_text=trigger_reason_text,
+                    charging_state_text=_enum_text(charging_state),
+                    transaction_id=txn_id,
+                )
+            )
+
         return call_result.TransactionEvent(**response_kwargs)
 
     @on(Action.notify_report)
@@ -668,6 +1554,71 @@ class ChargePointHandler(ChargePoint):
         logging.info(f"NotifyReport from {self.id}: request_id={request_id}, seq_no={seq_no}")
         return call_result.NotifyReport()
 
+    @on(Action.report_charging_profiles)
+    async def on_report_charging_profiles(self, request_id, charging_limit_source,
+                                          charging_profile, evse_id=None, tbc=False, **kwargs):
+        logging.info(
+            f"ReportChargingProfiles from {self.id}: request_id={request_id}, "
+            f"evse_id={evse_id}, source={charging_limit_source}, tbc={tbc}"
+        )
+        reported_id = _k_extract_profile_id(charging_profile)
+        if reported_id is not None:
+            _k_last_reported_profile_id[self.id] = reported_id
+        if self._k_pending_clear_from_report:
+            self._k_pending_clear_from_report = False
+            target_id = _k_last_reported_profile_id.get(self.id)
+            if target_id is not None:
+                asyncio.create_task(
+                    _k_send_clear_charging_profile(self, charging_profile_id=target_id)
+                )
+        return call_result.ReportChargingProfiles()
+
+    @on(Action.notify_ev_charging_needs)
+    async def on_notify_ev_charging_needs(self, charging_needs, evse_id, max_schedule_tuples=None, **kwargs):
+        logging.info(
+            f"NotifyEVChargingNeeds from {self.id}: evse_id={evse_id}, "
+            f"session_index={_k_session_index(self)}"
+        )
+        idx = _k_session_index(self)
+        if self.id in _k_mode_active and idx in (25, 26, 27, 28, 29):
+            txn_id = _k_latest_transaction_id.get(self.id)
+            asyncio.create_task(_k_send_tx_profile_for_transaction(self, txn_id))
+        return call_result.NotifyEVChargingNeeds(status='Accepted')
+
+    @on(Action.notify_ev_charging_schedule)
+    async def on_notify_ev_charging_schedule(self, time_base, charging_schedule, evse_id, **kwargs):
+        idx = _k_session_index(self)
+        status = GenericStatusEnumType.accepted
+        if self.id in _k_mode_active and idx == 26:
+            # K_55: first schedule exceeds offered limits -> Rejected, then renegotiate.
+            if _k_schedule_exceeds_offer(self.id, charging_schedule) and not self._k_schedule_rejected_once:
+                self._k_schedule_rejected_once = True
+                self._k_renegotiation_pending = True
+                status = GenericStatusEnumType.rejected
+        logging.info(
+            f"NotifyEVChargingSchedule from {self.id}: evse_id={evse_id}, "
+            f"session_index={idx}, status={status}"
+        )
+        return call_result.NotifyEVChargingSchedule(status=status)
+
+    @on(Action.notify_charging_limit)
+    async def on_notify_charging_limit(self, charging_limit, **kwargs):
+        idx = _k_session_index(self)
+        logging.info(
+            f"NotifyChargingLimit from {self.id}: session_index={idx}, charging_limit={charging_limit}"
+        )
+        if self.id in _k_mode_active and idx == 24:
+            criterion = {'charging_profile_purpose': 'ChargingStationExternalConstraints'}
+            asyncio.create_task(
+                _k_send_get_charging_profiles(self, criterion, evse_id=CONFIGURED_EVSE_ID)
+            )
+        return call_result.NotifyChargingLimit()
+
+    @on(Action.cleared_charging_limit)
+    async def on_cleared_charging_limit(self, charging_limit_source, **kwargs):
+        logging.info(f"ClearedChargingLimit from {self.id}: source={charging_limit_source}")
+        return call_result.ClearedChargingLimit()
+
     @on(Action.security_event_notification)
     async def on_security_event_notification(self, type, timestamp, **kwargs):
         logging.info(f"SecurityEventNotification from {self.id}: type={type}")
@@ -675,6 +1626,7 @@ class ChargePointHandler(ChargePoint):
 
     @on(Action.meter_values)
     async def on_meter_values(self, evse_id, meter_value, **kwargs):
+        self._seen_meter_values = True
         logging.info(f"MeterValues from {self.id}: evse_id={evse_id}")
         return call_result.MeterValues()
 
@@ -683,10 +1635,34 @@ class ChargePointHandler(ChargePoint):
         logging.info(f"LogStatusNotification from {self.id}: status={status}")
         return call_result.LogStatusNotification()
 
+    @on(Action.publish_firmware_status_notification)
+    async def on_publish_firmware_status_notification(self, status, location=None, request_id=None, **kwargs):
+        logging.info(
+            f"PublishFirmwareStatusNotification from {self.id}: "
+            f"status={status}, request_id={request_id}, location={location}"
+        )
+        return call_result.PublishFirmwareStatusNotification()
+
     @on(Action.firmware_status_notification)
-    async def on_firmware_status_notification(self, status, **kwargs):
-        logging.info(f"FirmwareStatusNotification from {self.id}: status={status}")
+    async def on_firmware_status_notification(self, status, request_id=None, **kwargs):
+        logging.info(
+            f"FirmwareStatusNotification from {self.id}: "
+            f"status={status}, request_id={request_id}"
+        )
+        if self.id in _l_mode_active and self._l_flow_state is not None:
+            asyncio.create_task(
+                _l_handle_firmware_status(self, status_text=_enum_text(status), request_id=request_id)
+            )
         return call_result.FirmwareStatusNotification()
+
+    @on(Action.reservation_status_update)
+    async def on_reservation_status_update(self, reservation_id, reservation_update_status, **kwargs):
+        self._h_confirmed = True
+        logging.info(
+            f"ReservationStatusUpdate from {self.id}: "
+            f"reservation_id={reservation_id}, reservation_update_status={reservation_update_status}"
+        )
+        return call_result.ReservationStatusUpdate()
 
 
 # ─── Provisioning Actions (SP1 post-boot) ────────────────────────────────────
@@ -1065,6 +2041,477 @@ async def _delayed_post_prov_action(cp, delay=2):
         # where a new session's task gets removed by a finishing old task).
         if _post_prov_pending_task.get(cp.id) is this_task:
             del _post_prov_pending_task[cp.id]
+
+
+# ─── H-Mode Actions ──────────────────────────────────────────────────────────
+
+def _next_h_reservation_id():
+    global _h_reservation_id
+    _h_reservation_id += 1
+    return _h_reservation_id
+
+
+def _h_expiry_iso(seconds):
+    expires_at = datetime.now(timezone.utc) + timedelta(seconds=max(1, seconds))
+    return expires_at.replace(microsecond=0).isoformat().replace('+00:00', 'Z')
+
+
+async def _h_send_reserve_now(cp, *, evse_id=None, connector_type=None,
+                              include_group=False, expiry_seconds=TRANSACTION_DURATION):
+    reservation_id = _next_h_reservation_id()
+    kwargs = {
+        'id': reservation_id,
+        'expiry_date_time': _h_expiry_iso(expiry_seconds),
+        'id_token': {'id_token': VALID_ID_TOKEN, 'type': VALID_ID_TOKEN_TYPE},
+    }
+    if evse_id is not None:
+        kwargs['evse_id'] = evse_id
+    if connector_type is not None:
+        kwargs['connector_type'] = connector_type
+    if include_group:
+        kwargs['group_id_token'] = {'id_token': VALID_TOKEN_GROUP, 'type': 'Central'}
+
+    logging.info(
+        f"H-mode: sending ReserveNow to {cp.id} "
+        f"(reservation_id={reservation_id}, evse_id={kwargs.get('evse_id')}, "
+        f"connector_type={kwargs.get('connector_type')}, include_group={include_group})"
+    )
+    response = await cp.call(call.ReserveNow(**kwargs))
+    logging.info(f"H-mode: ReserveNowResponse from {cp.id}: {response}")
+    return reservation_id
+
+
+async def _execute_h_action(cp, action):
+    if action == 'reserve_specific':
+        await _h_send_reserve_now(cp, evse_id=CONFIGURED_EVSE_ID)
+    elif action == 'reserve_specific_expiry':
+        await _h_send_reserve_now(
+            cp,
+            evse_id=CONFIGURED_EVSE_ID,
+            expiry_seconds=TRANSACTION_DURATION,
+        )
+    elif action == 'reserve_unspecified':
+        await _h_send_reserve_now(cp)
+    elif action == 'reserve_unspecified_multi':
+        reservations_to_send = max(1, CONFIGURED_NUMBER_OF_EVSES)
+        for i in range(reservations_to_send):
+            await _h_send_reserve_now(cp)
+            # Give the test harness time to consume each request individually.
+            if i < reservations_to_send - 1:
+                await asyncio.sleep(1)
+    elif action == 'reserve_connector_type':
+        await _h_send_reserve_now(cp, connector_type=CONFIGURED_CONNECTOR_TYPE)
+    elif action == 'reserve_then_cancel':
+        reservation_id = await _h_send_reserve_now(cp, evse_id=CONFIGURED_EVSE_ID)
+        await asyncio.sleep(1)
+        logging.info(
+            f"H-mode: sending CancelReservation to {cp.id} "
+            f"(reservation_id={reservation_id})"
+        )
+        response = await cp.call(call.CancelReservation(reservation_id=reservation_id))
+        logging.info(f"H-mode: CancelReservationResponse from {cp.id}: {response}")
+    elif action == 'reserve_specific_group':
+        await _h_send_reserve_now(
+            cp,
+            evse_id=CONFIGURED_EVSE_ID,
+            include_group=True,
+        )
+    else:
+        logging.warning(f"H-mode: unknown action '{action}' for {cp.id}")
+
+
+async def _delayed_h_action(cp, idx, delay=2):
+    """Execute an H-mode action after a delay of silence from the CP."""
+    this_task = asyncio.current_task()
+    try:
+        await asyncio.sleep(delay)
+        if not cp._connection.open:
+            return
+        action = _SP1_H_PROVISIONING[idx]
+        cp._h_action_fired_for_session = True
+        # Remove before cp.call() so route_message doesn't cancel us with call results.
+        if _h_pending_action_task.get(cp.id) is this_task:
+            del _h_pending_action_task[cp.id]
+        logging.info(f"H-mode action #{idx} for {cp.id}: {action}")
+        await _execute_h_action(cp, action)
+    except asyncio.CancelledError:
+        pass
+    except Exception as e:
+        logging.warning(f"H-mode action failed for {cp.id}: {e}")
+    finally:
+        if _h_pending_action_task.get(cp.id) is this_task:
+            del _h_pending_action_task[cp.id]
+
+
+# ─── K-Mode Actions ──────────────────────────────────────────────────────────
+
+async def _execute_k_action(cp, action):
+    if action == 'set_tx_default_specific':
+        profile = _k_profile(
+            _k_next_profile_id(),
+            'TxDefaultProfile',
+            'Absolute',
+            6.0,
+            include_start_schedule=True,
+            include_valid_window=True,
+        )
+        await _k_send_set_charging_profile(cp, CONFIGURED_EVSE_ID, profile)
+
+    elif action == 'set_tx_profile_no_tx':
+        profile = _k_profile(
+            _k_next_profile_id(),
+            'TxProfile',
+            'Relative',
+            7.0,
+            include_start_schedule=False,
+            include_valid_window=False,
+        )
+        await _k_send_set_charging_profile(cp, CONFIGURED_EVSE_ID, profile)
+
+    elif action == 'set_station_max_profile':
+        profile = _k_profile(
+            _k_next_profile_id(),
+            'ChargingStationMaxProfile',
+            'Absolute',
+            8.0,
+            include_start_schedule=True,
+            include_valid_window=True,
+        )
+        await _k_send_set_charging_profile(cp, 0, profile)
+
+    elif action == 'set_replace_same_id':
+        replace_id = getattr(cp, '_k_replace_profile_id', None)
+        if replace_id is None:
+            replace_id = _k_next_profile_id()
+            cp._k_replace_profile_id = replace_id
+        profile_a = _k_profile(
+            replace_id,
+            'TxDefaultProfile',
+            'Absolute',
+            8.0,
+            include_start_schedule=True,
+            include_valid_window=True,
+        )
+        profile_b = _k_profile(
+            replace_id,
+            'TxDefaultProfile',
+            'Absolute',
+            6.0,
+            include_start_schedule=True,
+            include_valid_window=True,
+        )
+        await _k_send_set_charging_profile(cp, CONFIGURED_EVSE_ID, profile_a)
+        await asyncio.sleep(0.5)
+        await _k_send_set_charging_profile(cp, CONFIGURED_EVSE_ID, profile_b)
+
+    elif action == 'get_then_clear_by_id':
+        cp._k_pending_clear_from_report = True
+        await _k_send_get_charging_profiles(
+            cp,
+            {'charging_profile_purpose': 'TxDefaultProfile'},
+            evse_id=CONFIGURED_EVSE_ID,
+        )
+
+    elif action == 'clear_by_criteria':
+        await _k_send_clear_charging_profile(
+            cp,
+            criteria={
+                'charging_profile_purpose': 'TxDefaultProfile',
+                'stack_level': CONFIGURED_STACK_LEVEL,
+                'evse_id': CONFIGURED_EVSE_ID,
+            },
+        )
+
+    elif action == 'set_tx_default_all':
+        profile = _k_profile(
+            _k_next_profile_id(),
+            'TxDefaultProfile',
+            'Absolute',
+            6.0,
+            include_start_schedule=True,
+            include_valid_window=True,
+        )
+        await _k_send_set_charging_profile(cp, 0, profile)
+
+    elif action == 'set_tx_default_recurring':
+        profile = _k_profile(
+            _k_next_profile_id(),
+            'TxDefaultProfile',
+            'Recurring',
+            6.0,
+            include_start_schedule=True,
+            include_valid_window=True,
+            recurrency_kind='Daily',
+        )
+        await _k_send_set_charging_profile(cp, CONFIGURED_EVSE_ID, profile)
+
+    elif action == 'get_profiles_evse0_purpose':
+        await _k_send_get_charging_profiles(
+            cp,
+            {'charging_profile_purpose': 'TxDefaultProfile'},
+            evse_id=0,
+        )
+
+    elif action == 'get_profiles_evse_purpose':
+        await _k_send_get_charging_profiles(
+            cp,
+            {'charging_profile_purpose': 'TxDefaultProfile'},
+            evse_id=CONFIGURED_EVSE_ID,
+        )
+
+    elif action == 'get_profiles_no_evse_purpose':
+        await _k_send_get_charging_profiles(
+            cp,
+            {'charging_profile_purpose': 'TxDefaultProfile'},
+            evse_id=None,
+        )
+
+    elif action == 'get_profiles_by_id':
+        await _k_send_get_charging_profiles(
+            cp,
+            {'charging_profile_id': [100]},
+            evse_id=None,
+        )
+
+    elif action == 'get_profiles_evse_stack':
+        await _k_send_get_charging_profiles(
+            cp,
+            {'stack_level': CONFIGURED_STACK_LEVEL},
+            evse_id=CONFIGURED_EVSE_ID,
+        )
+
+    elif action == 'get_profiles_evse_source':
+        ok = await _k_send_get_charging_profiles(
+            cp,
+            {'charging_limit_source': ['CSO']},
+            evse_id=CONFIGURED_EVSE_ID,
+        )
+        if not ok:
+            # Compatibility fallback for stacks that expect a scalar value.
+            await asyncio.sleep(0.2)
+            await _k_send_get_charging_profiles(
+                cp,
+                {'charging_limit_source': 'CSO'},
+                evse_id=CONFIGURED_EVSE_ID,
+            )
+
+    elif action == 'get_profiles_evse_purpose_stack':
+        await _k_send_get_charging_profiles(
+            cp,
+            {
+                'charging_profile_purpose': 'TxDefaultProfile',
+                'stack_level': CONFIGURED_STACK_LEVEL,
+            },
+            evse_id=CONFIGURED_EVSE_ID,
+        )
+
+    elif action == 'request_start_tx_with_profile':
+        profile = _k_profile(
+            _k_next_profile_id(),
+            'TxProfile',
+            'Relative',
+            7.0,
+            include_start_schedule=False,
+            include_valid_window=False,
+            transaction_id=None,
+        )
+        remote_start_id = _k_next_request_start_id()
+        logging.info(
+            f"K-mode: sending RequestStartTransaction to {cp.id} "
+            f"(remote_start_id={remote_start_id})"
+        )
+        try:
+            await cp.call(call.RequestStartTransaction(
+                id_token={'id_token': VALID_ID_TOKEN, 'type': VALID_ID_TOKEN_TYPE},
+                remote_start_id=remote_start_id,
+                evse_id=CONFIGURED_EVSE_ID,
+                charging_profile=profile,
+            ))
+        except Exception as e:
+            logging.warning(f"K-mode RequestStartTransaction failed for {cp.id}: {e}")
+
+    elif action == 'get_composite_evse':
+        await _k_send_get_composite_schedule(cp, evse_id=CONFIGURED_EVSE_ID)
+
+    elif action == 'get_composite_station':
+        await _k_send_get_composite_schedule(cp, evse_id=0)
+
+    elif action is None:
+        logging.info(f"K-mode: no proactive action for {cp.id} (session_index={_k_session_index(cp)})")
+
+    else:
+        logging.warning(f"K-mode: unknown action '{action}' for {cp.id}")
+
+
+async def _delayed_k_action(cp, idx, delay=2):
+    """Execute a K-mode action after a delay of silence from the CP."""
+    this_task = asyncio.current_task()
+    try:
+        await asyncio.sleep(delay)
+        if not cp._connection.open:
+            return
+        if not (0 <= idx < len(_SP1_K_PROVISIONING)):
+            return
+        action = _SP1_K_PROVISIONING[idx]
+        cp._k_action_fired_for_session = True
+        if _k_pending_action_task.get(cp.id) is this_task:
+            del _k_pending_action_task[cp.id]
+        logging.info(f"K-mode action #{idx} for {cp.id}: {action}")
+        await _execute_k_action(cp, action)
+    except asyncio.CancelledError:
+        pass
+    except Exception as e:
+        logging.warning(f"K-mode action failed for {cp.id}: {e}")
+    finally:
+        if _k_pending_action_task.get(cp.id) is this_task:
+            del _k_pending_action_task[cp.id]
+
+
+async def _execute_l_action(cp, plan):
+    op = plan.get('op')
+    variant = plan.get('variant', 'standard')
+    cp._l_flow_state = {
+        'op': op,
+        'variant': variant,
+        'request_id': None,
+        'second_update_pending': variant == 'replace_on_downloading',
+        'second_update_sent': False,
+    }
+
+    if op == 'update':
+        update_variant = variant if variant in ('install_scheduled', 'download_scheduled') else 'secure'
+        req_id = await _l_send_update_firmware(cp, variant=update_variant, alternate=False)
+        cp._l_flow_state['request_id'] = req_id
+        return
+
+    if op == 'publish':
+        req_id = await _l_send_publish_firmware(cp)
+        cp._l_flow_state['request_id'] = req_id
+        return
+
+    if op == 'unpublish':
+        await _l_send_unpublish_firmware(cp)
+        return
+
+    logging.warning(f"L-mode: unknown action plan {plan!r} for {cp.id}")
+
+
+async def _l_handle_firmware_status(cp, *, status_text, request_id=None):
+    if _active_cp_instance.get(cp.id) is not cp:
+        return
+    state = cp._l_flow_state or {}
+    if not state.get('second_update_pending'):
+        return
+    if state.get('second_update_sent'):
+        return
+    if status_text != 'Downloading':
+        return
+
+    state['second_update_sent'] = True
+    cp._l_flow_state = state
+    await asyncio.sleep(0.1)
+    logging.info(
+        f"L-mode: {cp.id} reported Downloading during replace flow; "
+        f"sending follow-up UpdateFirmware"
+    )
+    await _l_send_update_firmware(cp, variant='secure', alternate=True)
+
+
+async def _delayed_l_action(cp, idx, delay=2):
+    """Execute an L-mode action after a delay of silence from the CP."""
+    this_task = asyncio.current_task()
+    try:
+        await asyncio.sleep(delay)
+        if not cp._connection.open:
+            return
+        if not (0 <= idx < len(_SP1_L_PROVISIONING)):
+            return
+        plan = _SP1_L_PROVISIONING[idx]
+        cp._l_action_fired_for_session = True
+        if _l_pending_action_task.get(cp.id) is this_task:
+            del _l_pending_action_task[cp.id]
+        logging.info(f"L-mode action #{idx} for {cp.id}: {plan}")
+        await _execute_l_action(cp, plan)
+    except asyncio.CancelledError:
+        pass
+    except Exception as e:
+        logging.warning(f"L-mode action failed for {cp.id}: {e}")
+    finally:
+        if _l_pending_action_task.get(cp.id) is this_task:
+            del _l_pending_action_task[cp.id]
+
+
+def _rollback_k_index_on_disconnect(cp):
+    return
+
+
+async def _k_handle_transaction_event(cp, *, event_type_text, trigger_reason_text,
+                                      charging_state_text, transaction_id):
+    """Handle transaction-driven smart charging actions for later K tests."""
+    if cp.id not in _k_mode_active:
+        return
+
+    idx = _k_session_index(cp)
+    if idx < 0:
+        return
+
+    txn_id = transaction_id or _k_latest_transaction_id.get(cp.id)
+    if txn_id is None:
+        return
+
+    is_charging_transition = (
+        event_type_text == 'Updated'
+        and trigger_reason_text == 'ChargingStateChanged'
+        and charging_state_text == 'Charging'
+    )
+    if not is_charging_transition:
+        return
+
+    # K_55: if EV schedule exceeded limits and was rejected, renegotiate.
+    if idx == 26 and cp._k_renegotiation_pending and not cp._k_initiated_set_sent:
+        cp._k_renegotiation_pending = False
+        cp._k_initiated_set_sent = True
+        await asyncio.sleep(0.5)
+        await _k_send_tx_profile_for_transaction(cp, txn_id)
+        return
+
+    # K_58/K_59: CSMS-initiated renegotiation after charging transition.
+    if idx in (28, 29) and not cp._k_initiated_set_sent:
+        cp._k_initiated_set_sent = True
+        await asyncio.sleep(0.5)
+        await _k_send_tx_profile_for_transaction(cp, txn_id)
+        return
+
+    # K_60: send TxProfile for ongoing transaction.
+    if idx == 30 and not cp._k_tx_profile_sent:
+        cp._k_tx_profile_sent = True
+        await asyncio.sleep(0.5)
+        await _k_send_tx_profile_for_transaction(cp, txn_id)
+        return
+
+    # K_70: send two different profiles for the ongoing transaction context.
+    if idx == 31 and not cp._k_multi_profile_sent:
+        cp._k_multi_profile_sent = True
+        profile1 = _k_profile(
+            _k_next_profile_id(),
+            'TxDefaultProfile',
+            'Absolute',
+            6.0,
+            include_start_schedule=True,
+            include_valid_window=True,
+        )
+        profile2 = _k_profile(
+            _k_next_profile_id(),
+            'ChargingStationMaxProfile',
+            'Absolute',
+            8.0,
+            include_start_schedule=True,
+            include_valid_window=True,
+        )
+        await asyncio.sleep(0.5)
+        await _k_send_set_charging_profile(cp, CONFIGURED_EVSE_ID, profile1)
+        await asyncio.sleep(0.5)
+        await _k_send_set_charging_profile(cp, 0, profile2)
 
 
 # ─── Test Mode Actions ───────────────────────────────────────────────────────
@@ -1537,6 +2984,7 @@ async def on_connect_ws(websocket, path):
     cp_id = path.strip('/')
     cp = ChargePointHandler(cp_id, websocket)
     cp._security_profile = 1
+    _active_cp_instance[cp_id] = cp
 
     test_mode = get_test_mode_for_cp(cp_id)
     if test_mode:
@@ -1548,6 +2996,10 @@ async def on_connect_ws(websocket, path):
         await cp.start()
     except ConnectionClosedOK:
         logging.info(f'WS: {cp_id} disconnected')
+    finally:
+        _rollback_k_index_on_disconnect(cp)
+        if _active_cp_instance.get(cp_id) is cp:
+            del _active_cp_instance[cp_id]
 
 
 # ─── WSS Server (Port 8082, SP2: TLS+Auth, SP3: mTLS) ───────────────────────
@@ -1596,6 +3048,7 @@ async def on_connect_wss(websocket, path):
 
     cp = ChargePointHandler(cp_id, websocket)
     cp._security_profile = security_profile
+    _active_cp_instance[cp_id] = cp
 
     test_mode = get_test_mode_for_cp(cp_id)
     if test_mode:
@@ -1607,6 +3060,10 @@ async def on_connect_wss(websocket, path):
         await cp.start()
     except ConnectionClosedOK:
         logging.info(f'WSS: {cp_id} disconnected (SP{security_profile})')
+    finally:
+        _rollback_k_index_on_disconnect(cp)
+        if _active_cp_instance.get(cp_id) is cp:
+            del _active_cp_instance[cp_id]
 
 
 # ─── Shared Helpers ──────────────────────────────────────────────────────────

@@ -13,6 +13,8 @@ Based on `OCPP 2.0.1 Specification, Edition 4 (2025-12-03)`.
 ├── conftest.py            # Pytest fixtures and shared setup
 ├── tzi_charge_point.py    # Mock charge point used by the tests
 ├── csms.py                # Minimal in-memory CSMS for local validation
+├── config.json            # Runtime configuration for csms.py
+├── config.example.json    # Example configuration template
 ├── utils.py               # Shared helpers (auth, ids, timestamps, etc.)
 ├── pytest.ini             # Default environment and pytest settings
 └── requirements.txt       # Python dependencies
@@ -55,7 +57,30 @@ pip install -r requirements.txt
 
 ## Configuration
 
-Default environment is defined in `pytest.ini` and can be overridden with shell env vars. See the full environment variables reference in [`ChargingPointsConfig.md`](ChargingPointsConfig.md).
+`csms.py` now loads runtime configuration from `config.json` (repository root) at startup.
+
+- To bootstrap your local config:
+
+```bash
+cp config.example.json config.json
+```
+
+- Edit `config.json` values for your setup (ports, CP IDs, connector type, token values, TLS paths, etc.).
+- `python csms.py <test_mode>` still supports a CLI test-mode override; when provided, it overrides `CSMS_TEST_MODE` from `config.json`.
+
+Key fields in `config.json`:
+
+- `CSMS_WS_PORT`, `CSMS_WSS_PORT`
+- `BASIC_AUTH_CP`, `BASIC_AUTH_CP_F`, `BASIC_AUTH_CP_PASSWORD`
+- `CONFIGURED_EVSE_ID`, `CONFIGURED_CONNECTOR_ID`, `CONFIGURED_CONNECTOR_TYPE`, `CONFIGURED_NUMBER_OF_EVSES`
+- `VALID_ID_TOKEN`, `VALID_ID_TOKEN_TYPE`, `GROUP_ID`, `MASTERPASS_GROUP_ID`
+- `CSMS_SERVER_CERT`, `CSMS_SERVER_KEY`, `CSMS_CA_CERT`, `CSMS_CA_KEY`
+- `CSMS_CP_ACTIONS`, `CSMS_TEST_MODE`
+
+For test-runner (`pytest`) environment variables and full per-block requirements, see:
+
+- `pytest.ini`
+- [`ChargingPointsConfig.md`](ChargingPointsConfig.md)
 
 ## Charge Points Configuration
 
@@ -80,7 +105,7 @@ To run the test suite, you need to register **3 charging points** in your CSMS:
 4. **Configure TLS** (for Block A): valid server-side TLS certificates, client certificate validation for SP3, TLS 1.2+.
 5. **Configure tariff** (for Block I): energy-based tariff with running cost updates during charging.
 
-### Minimal Environment Variables
+### Minimal Test Environment Variables
 
 ```bash
 # Connection
@@ -103,14 +128,14 @@ export CSMS_ACTION_TIMEOUT="30"
 export TRANSACTION_DURATION="5"
 ```
 
-For the complete environment variables template and detailed per-block requirements, see [`ChargingPointsConfig.md`](ChargingPointsConfig.md).
+These variables are consumed by tests/mocks. `csms.py` itself reads configuration from `config.json`.
 
 ## Running Tests
 
-Run one block:
+Run one or more blocks:
 
 ```bash
-pytest -v -p no:warnings ./K
+pytest -v -p no:warnings ./A ./K
 ```
 
 Run a specific test:
@@ -137,11 +162,11 @@ pytest --collect-only -q
 
 It is not intended for production use.
 
-Currently supporting the `A B C D E F G` test cases.
+Currently supporting the `A` through `L` test cases.
 ```
-pytest -v -p no:warnings ./A ./B ./C ./D ./E ./F ./G
+pytest -v -p no:warnings ./A ./B ./C ./D ./E ./F ./G ./H ./I ./J ./K ./L
 
-============== 113 passed in 233.75s (0:03:53) ==============
+============== 184 passed in 429.33s (0:07:09) ==============
 ```
 
 ## Contributing
