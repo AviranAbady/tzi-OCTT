@@ -3,12 +3,38 @@ import os
 import ssl
 import jsonschema
 import base64
+from pathlib import Path
 from dataclasses import asdict
 import humps
 import logging
 from datetime import datetime
 import uuid
 logging.basicConfig(level=logging.INFO)
+
+_UTILS_DIR = Path(__file__).resolve().parent
+_SCHEMA_DIR = _UTILS_DIR / 'schema'
+_PROJECT_SCHEMA_DIR = _UTILS_DIR.parent / 'schema'
+_VERSIONED_SCHEMA_DIRS = (
+    _UTILS_DIR / '2.0.1' / 'schema',
+    _UTILS_DIR / '2.1' / 'schema',
+    _UTILS_DIR / '1.6' / 'schema',
+)
+
+
+def _resolve_path(path_value):
+    path = Path(path_value)
+    if path.is_absolute():
+        return str(path)
+
+    candidates = (
+        Path.cwd() / path,
+        _UTILS_DIR / path,
+        _UTILS_DIR.parent / path,
+    )
+    for candidate in candidates:
+        if candidate.exists():
+            return str(candidate.resolve())
+    return str((_UTILS_DIR / path).resolve())
 
 def get_basic_auth_headers(username, password):
     auth_string = base64.b64encode(f"{username}:{password}".encode()).decode()
@@ -20,8 +46,25 @@ def get_basic_auth_headers(username, password):
 
 
 def validate_schema(data, schema_file_name):
-    current_directory = os.getcwd()
-    schema_file_name = os.path.join(current_directory, 'schema', schema_file_name)
+    schema_candidates = [
+        _SCHEMA_DIR / schema_file_name,
+        _PROJECT_SCHEMA_DIR / schema_file_name,
+    ]
+    schema_candidates.extend(directory / schema_file_name for directory in _VERSIONED_SCHEMA_DIRS)
+
+    schema_path = None
+    for candidate in schema_candidates:
+        if candidate.exists():
+            schema_path = candidate
+            break
+    if schema_path is None:
+        # Keep the same exception type, but surface all attempted roots.
+        attempted = ', '.join(str(path.parent) for path in schema_candidates)
+        raise FileNotFoundError(
+            f"Schema '{schema_file_name}' not found. Tried: {attempted}"
+        )
+
+    schema_file_name = str(schema_path)
     with open(schema_file_name) as schema_file:
         schema = json.load(schema_file)
         data = humps.camelize(asdict(data))
@@ -73,9 +116,11 @@ def create_ssl_context(ca_cert=None, client_cert=None, client_key=None,
         ctx.check_hostname = False
         ctx.verify_mode = ssl.CERT_NONE
     if ca_cert:
-        ctx.load_verify_locations(ca_cert)
+        ctx.load_verify_locations(_resolve_path(ca_cert))
     if client_cert:
-        ctx.load_cert_chain(certfile=client_cert, keyfile=client_key)
+        cert_path = _resolve_path(client_cert)
+        key_path = _resolve_path(client_key) if client_key else None
+        ctx.load_cert_chain(certfile=cert_path, keyfile=key_path)
     if max_tls_version:
         ctx.maximum_version = max_tls_version
     return ctx

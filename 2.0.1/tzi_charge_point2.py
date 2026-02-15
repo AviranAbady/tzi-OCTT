@@ -69,7 +69,7 @@ def _wrap_dicts(obj):
     return obj
 
 
-class TziChargePoint(ChargePoint):
+class TziChargePoint2(ChargePoint):
     seq_no = 0
     notify_event_sent = False
 

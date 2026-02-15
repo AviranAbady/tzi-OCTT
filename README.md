@@ -59,11 +59,6 @@ pip install -r requirements.txt
 
 `csms.py` now loads runtime configuration from `config.json` (repository root) at startup.
 
-- To bootstrap your local config:
-
-```bash
-cp config.example.json config.json
-```
 
 - Edit `config.json` values for your setup (ports, CP IDs, connector type, token values, TLS paths, etc.).
 - `python csms.py <test_mode>` still supports a CLI test-mode override; when provided, it overrides `CSMS_TEST_MODE` from `config.json`.
@@ -135,19 +130,19 @@ These variables are consumed by tests/mocks. `csms.py` itself reads configuratio
 Run one or more blocks:
 
 ```bash
-pytest -v -p no:warnings ./A ./K
+pytest -v -p no:warnings ./2.0.1/A ./2.0.1/B ./2.0.1/C 
 ```
 
 Run a specific test:
 
 ```bash
-pytest -v -p no:warnings ./K/test_tc_k_01_csms.py
+pytest -v -p no:warnings ./2.0.1/K/test_tc_k_01_csms.py
 ```
 
 Run full suite:
 
 ```bash
-pytest -v -p no:warnings
+pytest -v -p no:warnings ./2.0.1
 ```
 
 Collect-only (fast sanity check):
@@ -158,15 +153,14 @@ pytest --collect-only -q
 
 ## Local CSMS playground
 
-[csms.py](csms.py) provides a minimal in-memory CSMS to help validate test behavior locally.
+[csms.py](2.0.1/csms.py) provides a minimal in-memory CSMS to help validate test behavior locally.
 
 It is not intended for production use.
 
-Currently supporting the `A` through `L` test cases.
 ```
-pytest -v -p no:warnings ./A ./B ./C ./D ./E ./F ./G ./H ./I ./J ./K ./L
+pytest -v -p no:warnings ./2.0.1/
 
-============== 184 passed in 429.33s (0:07:09) ==============
+============== 255 passed in 632.89s (0:10:32) ==============
 ```
 
 ## Contributing
